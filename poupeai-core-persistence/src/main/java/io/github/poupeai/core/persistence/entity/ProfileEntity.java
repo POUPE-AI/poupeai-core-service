@@ -1,4 +1,4 @@
-package io.github.poupeai.persistence.entity;
+package io.github.poupeai.core.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

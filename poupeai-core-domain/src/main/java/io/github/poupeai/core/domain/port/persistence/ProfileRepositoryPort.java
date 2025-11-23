@@ -1,6 +1,6 @@
-package io.github.poupeai.domain.port.persistence;
+package io.github.poupeai.core.domain.port.persistence;
 
-import io.github.poupeai.domain.model.Profile;
+import io.github.poupeai.core.domain.model.Profile;
 
 import java.util.Optional;
 import java.util.UUID;

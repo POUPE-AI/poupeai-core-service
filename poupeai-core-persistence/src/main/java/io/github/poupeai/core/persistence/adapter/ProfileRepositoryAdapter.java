@@ -1,16 +1,16 @@
-package io.github.poupeai.persistence.adapter;
+package io.github.poupeai.core.persistence.adapter;
 
-import io.github.poupeai.domain.model.Profile;
-import io.github.poupeai.domain.port.persistence.ProfileRepositoryPort;
-import io.github.poupeai.persistence.mapper.ProfileEntityMapper;
-import io.github.poupeai.persistence.repository.ProfileRepository;
+import io.github.poupeai.core.domain.model.Profile;
+import io.github.poupeai.core.domain.port.persistence.ProfileRepositoryPort;
+import io.github.poupeai.core.persistence.mapper.ProfileEntityMapper;
+import io.github.poupeai.core.persistence.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
 
-@Component
+@Repository
 @RequiredArgsConstructor
 public class ProfileRepositoryAdapter implements ProfileRepositoryPort {
     private final ProfileRepository repository;

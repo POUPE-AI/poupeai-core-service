@@ -1,7 +1,7 @@
-package io.github.poupeai.persistence.mapper;
+package io.github.poupeai.core.persistence.mapper;
 
-import io.github.poupeai.domain.model.Profile;
-import io.github.poupeai.persistence.entity.ProfileEntity;
+import io.github.poupeai.core.domain.model.Profile;
+import io.github.poupeai.core.persistence.entity.ProfileEntity;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")

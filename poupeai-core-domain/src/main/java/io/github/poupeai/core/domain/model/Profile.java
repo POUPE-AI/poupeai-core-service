@@ -1,4 +1,4 @@
-package io.github.poupeai.domain.model;
+package io.github.poupeai.core.domain.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

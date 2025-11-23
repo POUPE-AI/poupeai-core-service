@@ -1,8 +1,8 @@
 package io.github.poupeai.core.business.adapter;
 
-import io.github.poupeai.domain.model.Profile;
-import io.github.poupeai.domain.port.business.CreateOrUpdateProfilePort;
-import io.github.poupeai.domain.port.persistence.ProfileRepositoryPort;
+import io.github.poupeai.core.domain.model.Profile;
+import io.github.poupeai.core.domain.port.business.CreateOrUpdateProfilePort;
+import io.github.poupeai.core.domain.port.persistence.ProfileRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

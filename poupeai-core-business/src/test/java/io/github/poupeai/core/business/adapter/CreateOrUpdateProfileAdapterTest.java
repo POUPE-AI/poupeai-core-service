@@ -1,7 +1,7 @@
 package io.github.poupeai.core.business.adapter;
 
-import io.github.poupeai.domain.model.Profile;
-import io.github.poupeai.domain.port.persistence.ProfileRepositoryPort;
+import io.github.poupeai.core.domain.model.Profile;
+import io.github.poupeai.core.domain.port.persistence.ProfileRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

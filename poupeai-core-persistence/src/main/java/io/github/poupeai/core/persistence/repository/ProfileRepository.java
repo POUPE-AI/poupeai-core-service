@@ -1,6 +1,6 @@
-package io.github.poupeai.persistence.repository;
+package io.github.poupeai.core.persistence.repository;
 
-import io.github.poupeai.persistence.entity.ProfileEntity;
+import io.github.poupeai.core.persistence.entity.ProfileEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
