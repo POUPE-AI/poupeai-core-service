@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table
+@Table(name = "profiles")
 @Data
 @Builder
 @NoArgsConstructor
