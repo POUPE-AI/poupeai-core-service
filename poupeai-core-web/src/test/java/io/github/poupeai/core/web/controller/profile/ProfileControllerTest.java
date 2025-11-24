@@ -58,7 +58,7 @@ public class ProfileControllerTest {
         when(createOrUpdateProfilePort.execute(any())).thenReturn(domain);
         when(mapper.toResponse(any())).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/profiles/sync")
+        mockMvc.perform(post("/api/internal/profiles")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())

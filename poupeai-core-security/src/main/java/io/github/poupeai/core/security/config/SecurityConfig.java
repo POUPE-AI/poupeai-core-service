@@ -2,7 +2,6 @@ package io.github.poupeai.core.security.config;
 
 import io.github.poupeai.core.security.filter.ApiKeyAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +13,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-@Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -28,13 +26,15 @@ public class SecurityConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain internalSecurityFilterChain(HttpSecurity http) throws Exception {
-        log.info("Configurando segurança interna. Header esperado: {}", internalHeaderName);
 
         http
-                .securityMatcher("/api/v1/profiles/sync/**")
+                .securityMatcher("/api/internal/**")
+
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .addFilterBefore(new ApiKeyAuthenticationFilter(internalHeaderName, internalApiKey), UsernamePasswordAuthenticationFilter.class)
+
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().hasRole("SYSTEM")
                 )
@@ -42,11 +42,8 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.getWriter().write("Unauthorized: Invalid or missing API Key");
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.getWriter().write("Forbidden: Insufficient privileges");
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Invalid Internal API Key\"}");
                         })
                 );
 
