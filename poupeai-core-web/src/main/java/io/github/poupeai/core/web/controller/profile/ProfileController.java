@@ -20,14 +20,14 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/profiles")
+@RequestMapping("/api/v1/profiles/me")
 @RequiredArgsConstructor
 @Tag(name = "Profiles", description = "Gerenciamento de Perfis de Usuário")
 public class ProfileController {
     private final GetProfilePort getProfilePort;
     private final ProfileControllerMapper mapper;
 
-    @GetMapping("/me")
+    @GetMapping
     @Operation(
             summary = "Obter Meu Perfil",
             description = "Retorna os dados do usuário logado com base no Token JWT.",
