@@ -29,16 +29,12 @@ public class SecurityConfig {
 
         http
                 .securityMatcher("/api/internal/**")
-
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .addFilterBefore(new ApiKeyAuthenticationFilter(internalHeaderName, internalApiKey), UsernamePasswordAuthenticationFilter.class)
-
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().hasRole("SYSTEM")
                 )
-
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -66,7 +62,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {
+                }));
 
         return http.build();
     }
