@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
-public class ProfileControllerTest {
+public class InternalProfileControllerTest {
     private MockMvc mockMvc;
 
     @Mock
@@ -38,11 +38,11 @@ public class ProfileControllerTest {
     private ObjectMapper objectMapper;
 
     @InjectMocks
-    private ProfileController profileController;
+    private InternalProfileController internalProfileController;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(profileController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(internalProfileController).build();
         objectMapper = new ObjectMapper();
     }
 

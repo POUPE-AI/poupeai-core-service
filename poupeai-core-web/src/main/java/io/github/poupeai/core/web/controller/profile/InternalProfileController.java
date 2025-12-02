@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/internal/profiles")
 @RequiredArgsConstructor
 @Tag(name = "Internal Profiles", description = "Endpoints internos para gestão de perfis (System-to-System)")
-public class ProfileController {
+public class InternalProfileController {
     private final CreateOrUpdateProfilePort createOrUpdateProfilePort;
     private final ProfileControllerMapper mapper;
 
