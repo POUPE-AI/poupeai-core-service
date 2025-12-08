@@ -44,7 +44,7 @@ public class CategoryEntity {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_id", nullable = false,
+    @JoinColumn(name = "profile_id", referencedColumnName = "user_id", nullable = false,
         foreignKey = @ForeignKey(name = "fk_category_profile")
     )
     private ProfileEntity profile;
