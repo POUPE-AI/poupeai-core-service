@@ -12,4 +12,5 @@ public interface CategoryRepositoryPort {
     Optional<Category> findById(UUID id);
     List<Category> findAllByProfileId(UUID profileId);
     void delete(UUID id);
+    boolean isNameTaken(String name, UUID userId, UUID excludeId);
 }
