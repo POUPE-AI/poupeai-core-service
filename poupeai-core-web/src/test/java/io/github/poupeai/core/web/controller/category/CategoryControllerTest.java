@@ -5,6 +5,7 @@ import io.github.poupeai.core.domain.model.Category;
 import io.github.poupeai.core.domain.port.business.CategoryPort;
 import io.github.poupeai.core.web.dto.category.CategoryRequest;
 import io.github.poupeai.core.web.dto.category.CategoryResponse;
+import io.github.poupeai.core.web.dto.category.CategoryUpdateRequest;
 import io.github.poupeai.core.web.mapper.category.CategoryControllerMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -107,21 +108,20 @@ class CategoryControllerTest {
     void shouldUpdateCategorySuccessfully() {
         UUID userId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-        CategoryRequest request = new CategoryRequest();
-        Category existingCategory = Category.builder().id(categoryId).profileId(userId).build();
-        Category updatedCategory = new Category();
+        CategoryUpdateRequest request = new CategoryUpdateRequest();
+        Category category = Category.builder().id(categoryId).profileId(userId).build();
         CategoryResponse response = new CategoryResponse();
 
-        when(categoryPort.findById(categoryId)).thenReturn(existingCategory);
-        when(categoryMapper.toDomain(eq(request), eq(userId))).thenReturn(updatedCategory);
-        when(categoryPort.update(updatedCategory)).thenReturn(updatedCategory);
-        when(categoryMapper.toResponse(updatedCategory)).thenReturn(response);
+        when(categoryPort.findById(categoryId)).thenReturn(category);
+        doNothing().when(categoryMapper).updateDomainFromDto(eq(request), eq(category));
+        when(categoryPort.update(category)).thenReturn(category);
+        when(categoryMapper.toResponse(category)).thenReturn(response);
 
         ResponseEntity<CategoryResponse> result = categoryController.updateCategory(userId.toString(), categoryId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
-        verify(updatedCategory).setId(categoryId);
+        verify(categoryPort).update(category);
     }
 
     @Test
@@ -130,7 +130,7 @@ class CategoryControllerTest {
         UUID userId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-        CategoryRequest request = new CategoryRequest();
+        CategoryUpdateRequest request = new CategoryUpdateRequest();
         Category existingCategory = Category.builder().id(categoryId).profileId(otherUserId).build();
 
         when(categoryPort.findById(categoryId)).thenReturn(existingCategory);

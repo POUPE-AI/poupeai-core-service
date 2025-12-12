@@ -14,13 +14,14 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.github.poupeai.core.web.dto.category.CategoryUpdateRequest;
 import jakarta.validation.Valid;
 
 import java.util.UUID;
@@ -85,7 +86,7 @@ public class CategoryController {
         return ResponseEntity.ok(categoryMapper.toResponse(savedCategory));
     }
 
-    @PutMapping("{id}")
+    @PatchMapping("{id}")
     @Operation(
         summary = "Atualizar categoria",
         description = "Atualiza os dados de uma categoria existente",
@@ -93,16 +94,15 @@ public class CategoryController {
     )
     public ResponseEntity<CategoryResponse> updateCategory(
         @Parameter(hidden = true) @CurrentUserId String userId,
-        @PathVariable UUID id, @RequestBody @Valid CategoryRequest request) {
+        @PathVariable UUID id, @RequestBody @Valid CategoryUpdateRequest request) {
         UUID userUUID = UUID.fromString(userId);
         
-        Category existingCategory = categoryPort.findById(id);
-        if (!existingCategory.getProfileId().equals(userUUID)) {
+        Category category = categoryPort.findById(id);
+        if (!category.getProfileId().equals(userUUID)) {
             throw new ForbiddenActionException("Você não tem permissão para alterar esta categoria.");
         }
         
-        Category category = categoryMapper.toDomain(request, userUUID);
-        category.setId(id);
+        categoryMapper.updateDomainFromDto(request, category);
         Category updatedCategory = categoryPort.update(category);
         return ResponseEntity.ok(categoryMapper.toResponse(updatedCategory));
     }
