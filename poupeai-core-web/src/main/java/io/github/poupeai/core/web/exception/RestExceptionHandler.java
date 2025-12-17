@@ -2,6 +2,8 @@ package io.github.poupeai.core.web.exception;
 
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ForbiddenActionException;
+import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
+import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -35,6 +37,28 @@ public class RestExceptionHandler {
                 .errors(List.of(ex.getMessage()))
                 .build();
         return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> resourceNotFoundException(ResourceNotFoundException ex) {
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .code(HttpStatus.NOT_FOUND.value())
+                .status(HttpStatus.NOT_FOUND.name())
+                .errors(List.of(ex.getMessage()))
+                .build();
+        return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<ApiError> resourceAlreadyExistsException(ResourceAlreadyExistsException ex) {
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .code(HttpStatus.CONFLICT.value())
+                .status(HttpStatus.CONFLICT.name())
+                .errors(List.of(ex.getMessage()))
+                .build();
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(ForbiddenActionException.class)
