@@ -1,11 +1,11 @@
 package io.github.poupeai.core.persistence.adapter;
 
+import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
 import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 import io.github.poupeai.core.persistence.mapper.CategoryEntityMapper;
 import io.github.poupeai.core.persistence.repository.CategoryRepository;
 import io.github.poupeai.core.persistence.repository.ProfileRepository;
-import io.github.poupeai.core.domain.exception.DomainException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -36,9 +36,9 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
     }
 
     @Override
-    public Category update(Category category) {
-        var existingCategory = categoryRepository.findById(category.getId())
-                                .orElseThrow(() -> new DomainException("Categoria não encontrada."));
+    public Category update(Category category, UUID profileId) {
+        var existingCategory = categoryRepository.findByIdAndProfile_UserId(category.getId(), profileId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
         
         var profile = profileRepository.getReferenceById(category.getProfileId());
         existingCategory.setProfile(profile);
@@ -53,8 +53,8 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
     }
 
     @Override
-    public Optional<Category> findById(UUID id) {
-        return categoryRepository.findById(id).map(categoryMapper::toDomain);
+    public Optional<Category> findByIdAndProfileId(UUID id, UUID profileId) {
+        return categoryRepository.findByIdAndProfile_UserId(id, profileId).map(categoryMapper::toDomain);
     }
 
     @Override
@@ -74,5 +74,10 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
             return categoryRepository.existsByNameAndProfile_UserId(name, userId);
         }
         return categoryRepository.existsByNameAndProfile_UserIdAndIdNot(name, userId, excludeId);
+    }
+
+    @Override
+    public boolean existsByIdAndProfileId(UUID id, UUID profileId) {
+        return categoryRepository.existsByIdAndProfile_UserId(id, profileId);
     }
 }

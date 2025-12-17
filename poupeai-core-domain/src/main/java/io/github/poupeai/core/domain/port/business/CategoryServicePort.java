@@ -5,10 +5,10 @@ import io.github.poupeai.core.domain.model.Category;
 import java.util.List;
 import java.util.UUID;
 
-public interface CategoryPort {
+public interface CategoryServicePort {
     Category create(Category category);
-    Category update(Category category);
-    Category findById(UUID id);
+    Category update(Category category, UUID profileId);
+    Category findByIdAndProfileId(UUID id, UUID profileId);
     List<Category> findAllByProfileId(UUID profileId);
-    void delete(UUID id);
+    void delete(UUID id, UUID profileId);
 }

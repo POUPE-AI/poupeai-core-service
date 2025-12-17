@@ -1,8 +1,7 @@
 package io.github.poupeai.core.web.controller.category;
 
-import io.github.poupeai.core.domain.exception.ForbiddenActionException;
 import io.github.poupeai.core.domain.model.Category;
-import io.github.poupeai.core.domain.port.business.CategoryPort;
+import io.github.poupeai.core.domain.port.business.CategoryServicePort;
 import io.github.poupeai.core.web.dto.category.CategoryResponse;
 import io.github.poupeai.core.web.mapper.category.CategoryControllerMapper;
 import io.github.poupeai.core.web.security.CurrentUserId;
@@ -34,7 +33,7 @@ import io.github.poupeai.core.web.dto.category.CategoryRequest;
 @RequiredArgsConstructor
 @Tag(name = "Categorias", description = "Gerenciamento de Categorias")
 public class CategoryController {
-    private final CategoryPort categoryPort;
+    private final CategoryServicePort categoryServicePort;
     private final CategoryControllerMapper categoryMapper;
 
     @GetMapping
@@ -45,10 +44,8 @@ public class CategoryController {
     )
     public ResponseEntity<List<CategoryResponse>> getCategories(
         @Parameter(hidden = true) @CurrentUserId String userId) {
-        UUID userUUID = UUID.fromString(userId);
 
-        List<Category> categories = categoryPort.findAllByProfileId(userUUID);
-
+        List<Category> categories = categoryServicePort.findAllByProfileId(UUID.fromString(userId));
         return ResponseEntity.ok(categoryMapper.toResponseList(categories));
     }
 
@@ -61,13 +58,8 @@ public class CategoryController {
     public ResponseEntity<CategoryResponse> getCategoryById(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
-        UUID userUUID = UUID.fromString(userId);
-        Category category = categoryPort.findById(id);
-        
-        if (!category.getProfileId().equals(userUUID)) {
-            throw new ForbiddenActionException("Você não tem permissão para acessar esta categoria.");
-        }
-        
+
+        Category category = categoryServicePort.findByIdAndProfileId(id, UUID.fromString(userId));
         return ResponseEntity.ok(categoryMapper.toResponse(category));
     }
 
@@ -80,9 +72,10 @@ public class CategoryController {
     public ResponseEntity<CategoryResponse> createCategory(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @RequestBody @Valid CategoryRequest request) {
-        UUID userUUID = UUID.fromString(userId);
-        Category category = categoryMapper.toDomain(request, userUUID);
-        Category savedCategory = categoryPort.create(category);
+
+        Category category = categoryMapper.toDomain(request, UUID.fromString(userId));
+        Category savedCategory = categoryServicePort.create(category);
+
         return ResponseEntity.ok(categoryMapper.toResponse(savedCategory));
     }
 
@@ -95,15 +88,11 @@ public class CategoryController {
     public ResponseEntity<CategoryResponse> updateCategory(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id, @RequestBody @Valid CategoryUpdateRequest request) {
-        UUID userUUID = UUID.fromString(userId);
-        
-        Category category = categoryPort.findById(id);
-        if (!category.getProfileId().equals(userUUID)) {
-            throw new ForbiddenActionException("Você não tem permissão para alterar esta categoria.");
-        }
-        
+
+        Category category = categoryServicePort.findByIdAndProfileId(id, UUID.fromString(userId));
         categoryMapper.updateDomainFromDto(request, category);
-        Category updatedCategory = categoryPort.update(category);
+        Category updatedCategory = categoryServicePort.update(category, UUID.fromString(userId));
+
         return ResponseEntity.ok(categoryMapper.toResponse(updatedCategory));
     }
 
@@ -116,11 +105,8 @@ public class CategoryController {
     public ResponseEntity<Void> deleteCategory(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
-        Category category = categoryPort.findById(id);
-        if (!category.getProfileId().equals(UUID.fromString(userId))) {
-            throw new ForbiddenActionException("Você não tem permissão para deletar esta categoria.");
-        }
-        categoryPort.delete(id);
-        return ResponseEntity.ok().build();
+
+        categoryServicePort.delete(id, UUID.fromString(userId));
+        return ResponseEntity.noContent().build();
     }
 }
