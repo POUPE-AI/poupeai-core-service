@@ -1,8 +1,7 @@
 package io.github.poupeai.core.web.controller.category;
 
-import io.github.poupeai.core.domain.exception.ForbiddenActionException;
 import io.github.poupeai.core.domain.model.Category;
-import io.github.poupeai.core.domain.port.business.CategoryPort;
+import io.github.poupeai.core.domain.port.business.CategoryServicePort;
 import io.github.poupeai.core.web.dto.category.CategoryRequest;
 import io.github.poupeai.core.web.dto.category.CategoryResponse;
 import io.github.poupeai.core.web.dto.category.CategoryUpdateRequest;
@@ -28,7 +27,7 @@ import static org.mockito.Mockito.*;
 class CategoryControllerTest {
 
     @Mock
-    private CategoryPort categoryPort;
+    private CategoryServicePort categoryServicePort;
 
     @Mock
     private CategoryControllerMapper categoryMapper;
@@ -43,7 +42,7 @@ class CategoryControllerTest {
         List<Category> categories = List.of(new Category());
         List<CategoryResponse> responses = List.of(new CategoryResponse());
 
-        when(categoryPort.findAllByProfileId(UUID.fromString(userId))).thenReturn(categories);
+        when(categoryServicePort.findAllByProfileId(UUID.fromString(userId))).thenReturn(categories);
         when(categoryMapper.toResponseList(categories)).thenReturn(responses);
 
         ResponseEntity<List<CategoryResponse>> result = categoryController.getCategories(userId);
@@ -60,27 +59,13 @@ class CategoryControllerTest {
         Category category = Category.builder().id(categoryId).profileId(userId).build();
         CategoryResponse response = new CategoryResponse();
 
-        when(categoryPort.findById(categoryId)).thenReturn(category);
+        when(categoryServicePort.findByIdAndProfileId(categoryId, userId)).thenReturn(category);
         when(categoryMapper.toResponse(category)).thenReturn(response);
 
         ResponseEntity<CategoryResponse> result = categoryController.getCategoryById(userId.toString(), categoryId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
-    }
-
-    @Test
-    @DisplayName("Should throw ForbiddenActionException when getting category of another user")
-    void shouldThrowExceptionWhenGettingCategoryOfAnotherUser() {
-        UUID userId = UUID.randomUUID();
-        UUID otherUserId = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        Category category = Category.builder().id(categoryId).profileId(otherUserId).build();
-
-        when(categoryPort.findById(categoryId)).thenReturn(category);
-
-        assertThrows(ForbiddenActionException.class, 
-            () -> categoryController.getCategoryById(userId.toString(), categoryId));
     }
 
     @Test
@@ -93,14 +78,14 @@ class CategoryControllerTest {
         CategoryResponse response = new CategoryResponse();
 
         when(categoryMapper.toDomain(eq(request), any(UUID.class))).thenReturn(category);
-        when(categoryPort.create(category)).thenReturn(savedCategory);
+        when(categoryServicePort.create(category)).thenReturn(savedCategory);
         when(categoryMapper.toResponse(savedCategory)).thenReturn(response);
 
         ResponseEntity<CategoryResponse> result = categoryController.createCategory(userId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
-        verify(categoryPort).create(category);
+        verify(categoryServicePort).create(category);
     }
 
     @Test
@@ -112,33 +97,16 @@ class CategoryControllerTest {
         Category category = Category.builder().id(categoryId).profileId(userId).build();
         CategoryResponse response = new CategoryResponse();
 
-        when(categoryPort.findById(categoryId)).thenReturn(category);
+        when(categoryServicePort.findByIdAndProfileId(categoryId, userId)).thenReturn(category);
         doNothing().when(categoryMapper).updateDomainFromDto(eq(request), eq(category));
-        when(categoryPort.update(category)).thenReturn(category);
+        when(categoryServicePort.update(category, userId)).thenReturn(category);
         when(categoryMapper.toResponse(category)).thenReturn(response);
 
         ResponseEntity<CategoryResponse> result = categoryController.updateCategory(userId.toString(), categoryId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
-        verify(categoryPort).update(category);
-    }
-
-    @Test
-    @DisplayName("Should throw ForbiddenActionException when updating category of another user")
-    void shouldThrowExceptionWhenUpdatingCategoryOfAnotherUser() {
-        UUID userId = UUID.randomUUID();
-        UUID otherUserId = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        CategoryUpdateRequest request = new CategoryUpdateRequest();
-        Category existingCategory = Category.builder().id(categoryId).profileId(otherUserId).build();
-
-        when(categoryPort.findById(categoryId)).thenReturn(existingCategory);
-
-        assertThrows(ForbiddenActionException.class, 
-            () -> categoryController.updateCategory(userId.toString(), categoryId, request));
-        
-        verify(categoryPort, never()).update(any());
+        verify(categoryServicePort).update(category, userId);
     }
 
     @Test
@@ -146,30 +114,11 @@ class CategoryControllerTest {
     void shouldDeleteCategorySuccessfully() {
         UUID userId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-        Category category = Category.builder().id(categoryId).profileId(userId).build();
-
-        when(categoryPort.findById(categoryId)).thenReturn(category);
 
         ResponseEntity<Void> result = categoryController.deleteCategory(userId.toString(), categoryId);
 
-        assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(categoryPort).delete(categoryId);
-    }
-
-    @Test
-    @DisplayName("Should throw ForbiddenActionException when deleting category of another user")
-    void shouldThrowExceptionWhenDeletingCategoryOfAnotherUser() {
-        UUID userId = UUID.randomUUID();
-        UUID otherUserId = UUID.randomUUID();
-        UUID categoryId = UUID.randomUUID();
-        Category category = Category.builder().id(categoryId).profileId(otherUserId).build();
-
-        when(categoryPort.findById(categoryId)).thenReturn(category);
-
-        assertThrows(ForbiddenActionException.class, 
-            () -> categoryController.deleteCategory(userId.toString(), categoryId));
-        
-        verify(categoryPort, never()).delete(any());
+        assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
+        verify(categoryServicePort).delete(categoryId, userId);
     }
 }
 
