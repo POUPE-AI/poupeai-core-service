@@ -1,6 +1,7 @@
 package io.github.poupeai.core.business.adapter;
 
-import io.github.poupeai.core.domain.exception.DomainException;
+import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
+import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
 import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
@@ -19,13 +20,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class CategoryAdapterTest {
+class CategoryServiceAdapterTest {
 
     @Mock
     private CategoryRepositoryPort categoryRepositoryPort;
 
     @InjectMocks
-    private CategoryAdapter categoryAdapter;
+    private CategoryServiceAdapter categoryAdapter;
 
     @Test
     @DisplayName("Should create category successfully when name is available")
@@ -47,7 +48,7 @@ class CategoryAdapterTest {
     }
 
     @Test
-    @DisplayName("Should throw DomainException when creating category with duplicate name")
+    @DisplayName("Should throw ResourceAlreadyExistsException when creating category with duplicate name")
     void shouldThrowExceptionWhenCreatingDuplicateName() {
         Category category = Category.builder()
                 .profileId(UUID.randomUUID())
@@ -57,7 +58,7 @@ class CategoryAdapterTest {
         when(categoryRepositoryPort.isNameTaken(category.getName(), category.getProfileId(), null))
                 .thenReturn(true);
 
-        assertThrows(DomainException.class, () -> categoryAdapter.create(category));
+        assertThrows(ResourceAlreadyExistsException.class, () -> categoryAdapter.create(category));
         verify(categoryRepositoryPort, never()).create(any());
     }
 
@@ -65,6 +66,7 @@ class CategoryAdapterTest {
     @DisplayName("Should update category successfully when name is available")
     void shouldUpdateCategorySuccessfully() {
         UUID id = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
         Category category = Category.builder()
                 .id(id)
                 .profileId(UUID.randomUUID())
@@ -73,19 +75,20 @@ class CategoryAdapterTest {
 
         when(categoryRepositoryPort.isNameTaken(category.getName(), category.getProfileId(), id))
                 .thenReturn(false);
-        when(categoryRepositoryPort.update(category)).thenReturn(category);
+        when(categoryRepositoryPort.update(category, profileId)).thenReturn(category);
 
-        Category result = categoryAdapter.update(category);
+        Category result = categoryAdapter.update(category, profileId);
 
         assertNotNull(result);
         assertEquals("Food Updated", result.getName());
-        verify(categoryRepositoryPort).update(category);
+        verify(categoryRepositoryPort).update(category, profileId);
     }
 
     @Test
-    @DisplayName("Should throw DomainException when updating category with duplicate name")
+    @DisplayName("Should throw ResourceAlreadyExistsException when updating category with duplicate name")
     void shouldThrowExceptionWhenUpdatingDuplicateName() {
         UUID id = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
         Category category = Category.builder()
                 .id(id)
                 .profileId(UUID.randomUUID())
@@ -95,31 +98,33 @@ class CategoryAdapterTest {
         when(categoryRepositoryPort.isNameTaken(category.getName(), category.getProfileId(), id))
                 .thenReturn(true);
 
-        assertThrows(DomainException.class, () -> categoryAdapter.update(category));
-        verify(categoryRepositoryPort, never()).update(any());
+        assertThrows(ResourceAlreadyExistsException.class, () -> categoryAdapter.update(category, profileId));
+        verify(categoryRepositoryPort, never()).update(any(), any());
     }
 
     @Test
     @DisplayName("Should find category by id successfully")
     void shouldFindByIdSuccessfully() {
         UUID id = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
         Category category = Category.builder().id(id).build();
 
-        when(categoryRepositoryPort.findById(id)).thenReturn(Optional.of(category));
+        when(categoryRepositoryPort.findByIdAndProfileId(id, profileId)).thenReturn(Optional.of(category));
 
-        Category result = categoryAdapter.findById(id);
+        Category result = categoryAdapter.findByIdAndProfileId(id, profileId);
 
         assertNotNull(result);
         assertEquals(id, result.getId());
     }
 
     @Test
-    @DisplayName("Should throw DomainException when category not found by id")
+    @DisplayName("Should throw ResourceNotFoundException when category not found by id")
     void shouldThrowExceptionWhenCategoryNotFound() {
         UUID id = UUID.randomUUID();
-        when(categoryRepositoryPort.findById(id)).thenReturn(Optional.empty());
+        UUID profileId = UUID.randomUUID();
+        when(categoryRepositoryPort.findByIdAndProfileId(id, profileId)).thenReturn(Optional.empty());
 
-        assertThrows(DomainException.class, () -> categoryAdapter.findById(id));
+        assertThrows(ResourceNotFoundException.class, () -> categoryAdapter.findByIdAndProfileId(id, profileId));
     }
 
     @Test
@@ -139,8 +144,11 @@ class CategoryAdapterTest {
     @DisplayName("Should delete category by id")
     void shouldDeleteCategory() {
         UUID id = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
 
-        categoryAdapter.delete(id);
+        when(categoryRepositoryPort.existsByIdAndProfileId(id, profileId)).thenReturn(true);
+
+        categoryAdapter.delete(id, profileId);
 
         verify(categoryRepositoryPort).delete(id);
     }
