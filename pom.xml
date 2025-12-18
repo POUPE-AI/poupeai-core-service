@@ -157,6 +157,8 @@
 						<exclude>**/*MapperImpl.*</exclude>
 						<exclude>**/*Application.*</exclude>
 						<exclude>**/config/**</exclude>
+						<exclude>**/web/exception/RestExceptionHandler.class</exclude>
+						<exclude>**/exception/**</exclude>
 					</excludes>
 				</configuration>
 
