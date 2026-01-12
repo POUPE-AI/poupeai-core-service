@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface InstitutionRepositoryPort {
     List<Institution> findAll();
+    boolean existsById(Long id);
 }

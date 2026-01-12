@@ -20,4 +20,9 @@ public class InstitutionRepositoryAdapter implements InstitutionRepositoryPort {
         var entities = institutionRepository.findAll();
         return institutionMapper.toDomainList(entities);
     }
+
+    @Override
+    public boolean existsById(Long id) {
+        return institutionRepository.existsById(id);
+    }
 }
