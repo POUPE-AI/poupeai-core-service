@@ -27,9 +27,6 @@ public class GoalRepositoryAdapter implements GoalRepositoryPort {
         
         var profile = profileRepository.getReferenceById(goal.getProfileId());
         entity.setProfile(profile);
-
-        entity.setCreatedAt(OffsetDateTime.now());
-        entity.setUpdatedAt(OffsetDateTime.now());
         
         var savedEntity = goalRepository.save(entity);
         return goalMapper.toDomain(savedEntity);
@@ -46,7 +43,6 @@ public class GoalRepositoryAdapter implements GoalRepositoryPort {
         existingGoal.setGoalAmount(goal.getGoalAmount());
         existingGoal.setTargetDate(goal.getTargetDate());
         existingGoal.setCompletedAt(goal.getCompletedAt());
-        existingGoal.setUpdatedAt(OffsetDateTime.now());
 
         var savedEntity = goalRepository.save(existingGoal);
         return goalMapper.toDomain(savedEntity);

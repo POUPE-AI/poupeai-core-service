@@ -26,8 +26,6 @@ public class GoalDepositRepositoryAdapter implements GoalDepositRepositoryPort {
         
         var goal = goalRepository.getReferenceById(goalDeposit.getGoalId());
         entity.setGoal(goal);
-
-        entity.setCreatedAt(OffsetDateTime.now());
         
         var savedEntity = goalDepositRepository.save(entity);
         return goalDepositMapper.toDomain(savedEntity);
