@@ -27,9 +27,6 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
         
         var profile = profileRepository.getReferenceById(category.getProfileId());
         entity.setProfile(profile);
-
-        entity.setCreatedAt(OffsetDateTime.now());
-        entity.setUpdatedAt(OffsetDateTime.now());
         
         var savedEntity = categoryRepository.save(entity);
         return categoryMapper.toDomain(savedEntity);
@@ -46,7 +43,6 @@ public class CategoryRepositoryAdapter implements CategoryRepositoryPort {
         existingCategory.setColorHex(category.getColorHex());
         existingCategory.setIconName(category.getIconName());
         existingCategory.setType(category.getType());
-        existingCategory.setUpdatedAt(OffsetDateTime.now());
 
         var savedEntity = categoryRepository.save(existingCategory);
         return categoryMapper.toDomain(savedEntity);
