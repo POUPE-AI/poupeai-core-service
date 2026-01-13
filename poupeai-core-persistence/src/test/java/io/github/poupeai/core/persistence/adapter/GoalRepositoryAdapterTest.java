@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,7 +55,12 @@ class GoalRepositoryAdapterTest {
 
         when(goalMapper.toEntity(domain)).thenReturn(entity);
         when(profileRepository.getReferenceById(profileId)).thenReturn(profileProxy);
-        when(goalRepository.save(entity)).thenReturn(entity);
+        when(goalRepository.save(entity)).thenAnswer(invocation -> {
+            GoalEntity saved = invocation.getArgument(0);
+            saved.setCreatedAt(OffsetDateTime.now());
+            saved.setUpdatedAt(OffsetDateTime.now());
+            return saved;
+        });
         when(goalMapper.toDomain(entity)).thenReturn(domain);
 
         Goal result = adapter.create(domain);
@@ -82,7 +88,11 @@ class GoalRepositoryAdapterTest {
 
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingEntity));
         when(profileRepository.getReferenceById(any())).thenReturn(profileProxy);
-        when(goalRepository.save(existingEntity)).thenReturn(existingEntity);
+        when(goalRepository.save(existingEntity)).thenAnswer(invocation -> {
+            GoalEntity saved = invocation.getArgument(0);
+            saved.setUpdatedAt(OffsetDateTime.now());
+            return saved;
+        });
         when(goalMapper.toDomain(existingEntity)).thenReturn(domain);
 
         Goal result = adapter.update(domain);
@@ -207,7 +217,11 @@ class GoalRepositoryAdapterTest {
 
         when(goalRepository.findById(goalId)).thenReturn(Optional.of(existingEntity));
         when(profileRepository.getReferenceById(any())).thenReturn(profileProxy);
-        when(goalRepository.save(existingEntity)).thenReturn(existingEntity);
+        when(goalRepository.save(existingEntity)).thenAnswer(invocation -> {
+            GoalEntity saved = invocation.getArgument(0);
+            saved.setUpdatedAt(OffsetDateTime.now());
+            return saved;
+        });
         when(goalMapper.toDomain(existingEntity)).thenReturn(domain);
 
         Goal result = adapter.update(domain);

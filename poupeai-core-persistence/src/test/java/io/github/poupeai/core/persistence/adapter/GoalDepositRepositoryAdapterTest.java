@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,7 +53,11 @@ class GoalDepositRepositoryAdapterTest {
 
         when(goalDepositMapper.toEntity(domain)).thenReturn(entity);
         when(goalRepository.getReferenceById(goalId)).thenReturn(goalProxy);
-        when(goalDepositRepository.save(entity)).thenReturn(entity);
+        when(goalDepositRepository.save(entity)).thenAnswer(invocation -> {
+            GoalDepositEntity saved = invocation.getArgument(0);
+            saved.setCreatedAt(OffsetDateTime.now());
+            return saved;
+        });
         when(goalDepositMapper.toDomain(entity)).thenReturn(domain);
 
         GoalDeposit result = adapter.create(domain);

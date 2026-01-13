@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.OffsetDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,7 +56,12 @@ class CategoryRepositoryAdapterTest {
 
         when(categoryMapper.toEntity(domain)).thenReturn(entity);
         when(profileRepository.getReferenceById(profileId)).thenReturn(profileProxy);
-        when(categoryRepository.save(entity)).thenReturn(entity);
+        when(categoryRepository.save(entity)).thenAnswer(invocation -> {
+            CategoryEntity saved = invocation.getArgument(0);
+            saved.setCreatedAt(OffsetDateTime.now());
+            saved.setUpdatedAt(OffsetDateTime.now());
+            return saved;
+        });
         when(categoryMapper.toDomain(entity)).thenReturn(domain);
 
         Category result = adapter.create(domain);
@@ -82,7 +88,11 @@ class CategoryRepositoryAdapterTest {
         when(categoryRepository.findByIdAndProfile_UserId(catId, profileId))
                 .thenReturn(Optional.of(existingEntity));
         when(profileRepository.getReferenceById(any())).thenReturn(profileProxy);
-        when(categoryRepository.save(existingEntity)).thenReturn(existingEntity);
+        when(categoryRepository.save(existingEntity)).thenAnswer(invocation -> {
+            CategoryEntity saved = invocation.getArgument(0);
+            saved.setUpdatedAt(OffsetDateTime.now());
+            return saved;
+        });
         when(categoryMapper.toDomain(existingEntity)).thenReturn(domain);
 
         Category result = adapter.update(domain, profileId);
