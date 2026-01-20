@@ -1,7 +1,7 @@
 services:
-  postgres:
+  core-db:
     image: postgres:16-alpine
-    container_name: poupeai-postgres
+    container_name: core-db-local
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -14,13 +14,31 @@ services:
     networks:
       - poupeai-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d poupeai_core"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d core_db" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: poupeai-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - poupeai-network
+
 volumes:
   postgres_data:
+  minio_data:
+
 
 networks:
   poupeai-network:
