@@ -3,14 +3,20 @@ package io.github.poupeai.core.business.adapter;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
+import io.github.poupeai.core.domain.model.CategoryFilter;
+import io.github.poupeai.core.domain.model.CategoryType;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +33,9 @@ class CategoryServiceAdapterTest {
 
     @InjectMocks
     private CategoryServiceAdapter categoryAdapter;
+
+    @Captor
+    private ArgumentCaptor<CategoryFilter> filterCaptor;
 
     @Test
     @DisplayName("Should create category successfully when name is available")
@@ -151,6 +160,81 @@ class CategoryServiceAdapterTest {
         categoryAdapter.delete(id, profileId);
 
         verify(categoryRepositoryPort).delete(id);
+    }
+
+    @Test
+    @DisplayName("Should throw ResourceNotFoundException when category not exists")
+    void shouldThrowExceptionWhenCategoryNotExists() {
+        UUID id = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
+
+        when(categoryRepositoryPort.existsByIdAndProfileId(id, profileId)).thenReturn(false);
+
+        assertThrows(ResourceNotFoundException.class, () -> categoryAdapter.delete(id, profileId));
+    }
+
+    @Test
+    @DisplayName("Should apply default sort 'name' when sortBy is null")
+    void shouldApplyDefaultSortWhenSortByIsNull() {
+        UUID profileId = UUID.randomUUID();
+        CategoryFilter filter = CategoryFilter.builder()
+                .sortBy(null)
+                .page(0)
+                .size(10)
+                .build();
+
+        PageDomain<Category> expectedPage = PageDomain.<Category>builder()
+                .content(Collections.emptyList())
+                .build();
+
+        when(categoryRepositoryPort.search(eq(profileId), any(CategoryFilter.class)))
+                .thenReturn(expectedPage);
+
+        PageDomain<Category> result = categoryAdapter.search(profileId, filter);
+
+        assertNotNull(result);
+
+        verify(categoryRepositoryPort).search(eq(profileId), filterCaptor.capture());
+
+        CategoryFilter capturedFilter = filterCaptor.getValue();
+        assertEquals("name", capturedFilter.getSortBy());
+    }
+
+    @Test
+    @DisplayName("Should apply default sort 'name' when sortBy is empty")
+    void shouldApplyDefaultSortWhenSortByIsEmpty() {
+        UUID profileId = UUID.randomUUID();
+        CategoryFilter filter = CategoryFilter.builder()
+                .sortBy("")
+                .build();
+
+        PageDomain<Category> expectedPage = PageDomain.<Category>builder().build();
+
+        when(categoryRepositoryPort.search(any(), any())).thenReturn(expectedPage);
+
+        categoryAdapter.search(profileId, filter);
+
+        verify(categoryRepositoryPort).search(eq(profileId), filterCaptor.capture());
+        assertEquals("name", filterCaptor.getValue().getSortBy());
+    }
+
+    @Test
+    @DisplayName("Should keep provided sortBy when it is valid")
+    void shouldKeepProvidedSortBy() {
+        UUID profileId = UUID.randomUUID();
+        String customSort = "createdAt";
+        CategoryFilter filter = CategoryFilter.builder()
+                .sortBy(customSort)
+                .build();
+
+        PageDomain<Category> expectedPage = PageDomain.<Category>builder().build();
+
+        when(categoryRepositoryPort.search(any(), any())).thenReturn(expectedPage);
+
+        categoryAdapter.search(profileId, filter);
+
+        verify(categoryRepositoryPort).search(eq(profileId), filterCaptor.capture());
+        assertEquals(customSort, filterCaptor.getValue().getSortBy());
     }
 }
 

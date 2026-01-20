@@ -1,10 +1,14 @@
 package io.github.poupeai.core.web.controller.category;
 
 import io.github.poupeai.core.domain.model.Category;
+import io.github.poupeai.core.domain.model.CategoryFilter;
+import io.github.poupeai.core.domain.model.CategoryType;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.CategoryServicePort;
 import io.github.poupeai.core.web.dto.category.CategoryRequest;
 import io.github.poupeai.core.web.dto.category.CategoryResponse;
 import io.github.poupeai.core.web.dto.category.CategoryUpdateRequest;
+import io.github.poupeai.core.web.dto.common.PageResponse;
 import io.github.poupeai.core.web.mapper.category.CategoryControllerMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,17 +42,52 @@ class CategoryControllerTest {
     @Test
     @DisplayName("Should get categories successfully")
     void shouldGetCategoriesSuccessfully() {
-        String userId = UUID.randomUUID().toString();
-        List<Category> categories = List.of(new Category());
-        List<CategoryResponse> responses = List.of(new CategoryResponse());
+        String userIdStr = UUID.randomUUID().toString();
+        UUID userId = UUID.fromString(userIdStr);
 
-        when(categoryServicePort.findAllByProfileId(UUID.fromString(userId))).thenReturn(categories);
+        int page = 0;
+        int size = 10;
+        String name = "Test";
+        CategoryType type = CategoryType.EXPENSE;
+        String sortDirection = "DESC";
+        String sortBy = "createdAt";
+
+        Category category = new Category();
+        CategoryResponse categoryResponse = new CategoryResponse();
+        List<Category> categories = List.of(category);
+        List<CategoryResponse> responses = List.of(categoryResponse);
+
+        CategoryFilter expectedFilter = CategoryFilter.builder()
+                .page(page)
+                .size(size)
+                .name(name)
+                .type(type)
+                .sortDirection(sortDirection)
+                .sortBy(sortBy)
+                .build();
+
+        PageDomain<Category> pageDomain = PageDomain.<Category>builder()
+                .content(categories)
+                .page(page)
+                .size(size)
+                .totalElements(1)
+                .totalPages(1)
+                .build();
+
+        when(categoryServicePort.search(eq(userId), eq(expectedFilter))).thenReturn(pageDomain);
         when(categoryMapper.toResponseList(categories)).thenReturn(responses);
 
-        ResponseEntity<List<CategoryResponse>> result = categoryController.getCategories(userId);
+        ResponseEntity<PageResponse<CategoryResponse>> result = categoryController.getCategories(
+                userIdStr, page, size, name, type, sortDirection, sortBy
+        );
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(responses, result.getBody());
+        assertNotNull(result.getBody());
+        assertEquals(responses, result.getBody().getContent());
+        assertEquals(1, result.getBody().getTotalElements());
+        assertEquals(1, result.getBody().getTotalPages());
+
+        verify(categoryServicePort).search(eq(userId), eq(expectedFilter));
     }
 
     @Test
