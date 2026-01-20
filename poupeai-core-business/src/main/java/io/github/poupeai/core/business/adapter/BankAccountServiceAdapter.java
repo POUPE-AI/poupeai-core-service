@@ -5,9 +5,11 @@ import io.github.poupeai.core.domain.exception.ForbiddenActionException;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.BankAccount;
+import io.github.poupeai.core.domain.model.TransactionType;
 import io.github.poupeai.core.domain.port.business.BankAccountServicePort;
 import io.github.poupeai.core.domain.port.persistence.BankAccountRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.InstitutionRepositoryPort;
+import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class BankAccountServiceAdapter implements BankAccountServicePort {
     private final BankAccountRepositoryPort bankAccountRepositoryPort;
     private final InstitutionRepositoryPort institutionRepositoryPort;
+    private final TransactionRepositoryPort transactionRepositoryPort;
 
     @Override
     @Transactional
@@ -76,6 +79,23 @@ public class BankAccountServiceAdapter implements BankAccountServicePort {
         }
 
         bankAccountRepositoryPort.delete(id);
+    }
+
+    @Override
+    public BigDecimal calculateCurrentBalance(UUID bankAccountId, UUID profileId) {
+        BankAccount bankAccount = bankAccountRepositoryPort.findByIdAndProfileId(bankAccountId, profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conta bancária não encontrada."));
+
+        BigDecimal initialBalance = bankAccount.getInitialBalance() != null 
+                ? bankAccount.getInitialBalance() 
+                : BigDecimal.ZERO;
+
+        BigDecimal incomeTotal = transactionRepositoryPort.sumAmountByBankAccountIdAndType(
+                bankAccountId, TransactionType.INCOME);
+        BigDecimal expenseTotal = transactionRepositoryPort.sumAmountByBankAccountIdAndType(
+                bankAccountId, TransactionType.EXPENSE);
+
+        return initialBalance.add(incomeTotal).subtract(expenseTotal);
     }
 
     private void validateBankAccount(BankAccount bankAccount) {
