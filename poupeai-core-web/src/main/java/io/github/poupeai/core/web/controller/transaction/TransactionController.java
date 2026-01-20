@@ -35,13 +35,9 @@ public class TransactionController {
     private final TransactionControllerMapper transactionMapper;
 
     @GetMapping
-    @Operation(
-        summary = "Listar transações",
-        description = "Retorna todas as transações do usuário",
-        security = @SecurityRequirement(name = "bearer-key")
-    )
+    @Operation(summary = "Listar transações", description = "Retorna todas as transações do usuário", security = @SecurityRequirement(name = "bearer-key"))
     public ResponseEntity<List<TransactionResponse>> getTransactions(
-        @Parameter(hidden = true) @CurrentUserId String userId) {
+            @Parameter(hidden = true) @CurrentUserId String userId) {
 
         UUID profileId = UUID.fromString(userId);
         List<Transaction> transactions = transactionServicePort.findAllByProfileId(profileId);
@@ -49,14 +45,10 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    @Operation(
-        summary = "Obter transação por ID",
-        description = "Retorna detalhes de uma transação específica",
-        security = @SecurityRequirement(name = "bearer-key")
-    )
+    @Operation(summary = "Obter transação por ID", description = "Retorna detalhes de uma transação específica", security = @SecurityRequirement(name = "bearer-key"))
     public ResponseEntity<TransactionResponse> getTransactionById(
-        @Parameter(hidden = true) @CurrentUserId String userId,
-        @PathVariable UUID id) {
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @PathVariable UUID id) {
 
         UUID profileId = UUID.fromString(userId);
         Transaction transaction = transactionServicePort.findByIdAndProfileId(id, profileId);
@@ -64,14 +56,10 @@ public class TransactionController {
     }
 
     @PostMapping
-    @Operation(
-        summary = "Criar transação",
-        description = "Cria uma nova transação. Transações parceladas geram múltiplas transações automaticamente.",
-        security = @SecurityRequirement(name = "bearer-key")
-    )
+    @Operation(summary = "Criar transação", description = "Cria uma nova transação. Transações parceladas geram múltiplas transações automaticamente.", security = @SecurityRequirement(name = "bearer-key"))
     public ResponseEntity<TransactionResponse> createTransaction(
-        @Parameter(hidden = true) @CurrentUserId String userId,
-        @RequestBody @Valid TransactionRequest request) {
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @RequestBody @Valid TransactionRequest request) {
 
         UUID profileId = UUID.fromString(userId);
         Transaction transaction = transactionMapper.toDomain(request, profileId);
@@ -81,15 +69,11 @@ public class TransactionController {
     }
 
     @PatchMapping("/{id}")
-    @Operation(
-        summary = "Atualizar transação",
-        description = "Atualiza os dados de uma transação existente.",
-        security = @SecurityRequirement(name = "bearer-key")
-    )
+    @Operation(summary = "Atualizar transação", description = "Atualiza os dados de uma transação existente.", security = @SecurityRequirement(name = "bearer-key"))
     public ResponseEntity<TransactionResponse> updateTransaction(
-        @Parameter(hidden = true) @CurrentUserId String userId,
-        @PathVariable UUID id,
-        @RequestBody @Valid TransactionUpdateRequest request) {
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @PathVariable UUID id,
+            @RequestBody @Valid TransactionUpdateRequest request) {
 
         UUID profileId = UUID.fromString(userId);
         Transaction transaction = transactionServicePort.findByIdAndProfileId(id, profileId);
@@ -100,17 +84,32 @@ public class TransactionController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(
-        summary = "Deletar transação",
-        description = "Deleta uma transação específica. Se a transação for parcelada, todas as parcelas serão deletadas.",
-        security = @SecurityRequirement(name = "bearer-key")
-    )
+    @Operation(summary = "Deletar transação", description = "Deleta uma transação específica. Se a transação for parcelada, todas as parcelas serão deletadas.", security = @SecurityRequirement(name = "bearer-key"))
     public ResponseEntity<Void> deleteTransaction(
-        @Parameter(hidden = true) @CurrentUserId String userId,
-        @PathVariable UUID id) {
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @PathVariable UUID id) {
 
         UUID profileId = UUID.fromString(userId);
         transactionServicePort.delete(id, profileId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/{id}/receipt", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload de comprovante", description = "Realiza o upload do comprovante para uma transação.", security = @SecurityRequirement(name = "bearer-key"))
+    public ResponseEntity<TransactionResponse> uploadReceipt(
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @PathVariable UUID id,
+            @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file)
+            throws java.io.IOException {
+
+        UUID profileId = UUID.fromString(userId);
+        Transaction transaction = transactionServicePort.uploadReceipt(
+                id,
+                profileId,
+                file.getInputStream(),
+                file.getContentType(),
+                file.getSize());
+
+        return ResponseEntity.ok(transactionMapper.toResponse(transaction));
     }
 }

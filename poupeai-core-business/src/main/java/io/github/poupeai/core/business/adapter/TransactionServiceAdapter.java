@@ -10,6 +10,7 @@ import io.github.poupeai.core.domain.model.Transaction;
 import io.github.poupeai.core.domain.model.TransactionType;
 import io.github.poupeai.core.domain.port.business.InvoiceServicePort;
 import io.github.poupeai.core.domain.port.business.TransactionServicePort;
+import io.github.poupeai.core.domain.port.output.StoragePort;
 import io.github.poupeai.core.domain.port.persistence.BankAccountRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.CreditCardRepositoryPort;
@@ -18,12 +19,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +37,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     private final CreditCardRepositoryPort creditCardRepositoryPort;
     private final CategoryRepositoryPort categoryRepositoryPort;
     private final InvoiceServicePort invoiceServicePort;
+    private final StoragePort storagePort;
 
     @Override
     @Transactional
@@ -40,9 +45,9 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         validateTransaction(transaction);
 
         Category category = categoryRepositoryPort.findByIdAndProfileId(
-                transaction.getCategoryId(), transaction.getProfileId()
-        ).orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
-        
+                transaction.getCategoryId(), transaction.getProfileId())
+                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
+
         TransactionType derivedType = mapCategoryTypeToTransactionType(category.getType());
         transaction.setType(derivedType);
 
@@ -55,7 +60,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
         return transactionRepositoryPort.create(transaction);
     }
-    
+
     private TransactionType mapCategoryTypeToTransactionType(CategoryType categoryType) {
         return switch (categoryType) {
             case INCOME -> TransactionType.INCOME;
@@ -70,12 +75,14 @@ public class TransactionServiceAdapter implements TransactionServicePort {
                 .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada."));
 
         if (Boolean.TRUE.equals(existingTransaction.getIsInstallment())) {
-            throw new DomainException("Não é possível editar uma transação parcelada. Delete todas as parcelas e crie novamente.");
+            throw new DomainException(
+                    "Não é possível editar uma transação parcelada. Delete todas as parcelas e crie novamente.");
         }
 
         validateTransactionForUpdate(transaction, existingTransaction);
 
-        UUID categoryId = transaction.getCategoryId() != null ? transaction.getCategoryId() : existingTransaction.getCategoryId();
+        UUID categoryId = transaction.getCategoryId() != null ? transaction.getCategoryId()
+                : existingTransaction.getCategoryId();
         Category category = categoryRepositoryPort.findByIdAndProfileId(categoryId, profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
         TransactionType derivedType = mapCategoryTypeToTransactionType(category.getType());
@@ -132,12 +139,12 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
     private Transaction createCreditCardTransaction(Transaction transaction) {
         CreditCard creditCard = creditCardRepositoryPort.findByIdAndProfileId(
-                transaction.getCreditCardId(), transaction.getProfileId()
-        ).orElseThrow(() -> new ResourceNotFoundException("Cartão de crédito não encontrado."));
+                transaction.getCreditCardId(), transaction.getProfileId())
+                .orElseThrow(() -> new ResourceNotFoundException("Cartão de crédito não encontrado."));
 
-        if (Boolean.TRUE.equals(transaction.getIsInstallment()) && 
-            transaction.getTotalInstallments() != null && 
-            transaction.getTotalInstallments() > 1) {
+        if (Boolean.TRUE.equals(transaction.getIsInstallment()) &&
+                transaction.getTotalInstallments() != null &&
+                transaction.getTotalInstallments() > 1) {
             return createInstallmentTransactions(transaction, creditCard);
         }
 
@@ -145,7 +152,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         transaction.setInvoiceId(invoice.getId());
 
         Transaction savedTransaction = transactionRepositoryPort.create(transaction);
-        
+
         invoiceServicePort.updateInvoiceTotals(invoice.getId());
 
         return savedTransaction;
@@ -155,12 +162,10 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         int totalInstallments = transaction.getTotalInstallments();
         BigDecimal totalAmount = transaction.getAmount();
         BigDecimal installmentAmount = totalAmount.divide(
-                BigDecimal.valueOf(totalInstallments), 2, RoundingMode.HALF_UP
-        );
-        
+                BigDecimal.valueOf(totalInstallments), 2, RoundingMode.HALF_UP);
+
         BigDecimal remainder = totalAmount.subtract(
-                installmentAmount.multiply(BigDecimal.valueOf(totalInstallments))
-        );
+                installmentAmount.multiply(BigDecimal.valueOf(totalInstallments)));
 
         UUID purchaseGroupUuid = UUID.randomUUID();
         LocalDate currentDate = transaction.getTransactionDate();
@@ -169,7 +174,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
         for (int i = 1; i <= totalInstallments; i++) {
             Invoice invoice = invoiceServicePort.getOrCreateInvoiceForDate(creditCard, currentDate);
-            
+
             BigDecimal currentInstallmentAmount = installmentAmount;
             if (i == totalInstallments && remainder.compareTo(BigDecimal.ZERO) != 0) {
                 currentInstallmentAmount = installmentAmount.add(remainder);
@@ -195,7 +200,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
                     .build();
 
             installments.add(installment);
-            
+
             if (!invoiceIdsToUpdate.contains(invoice.getId())) {
                 invoiceIdsToUpdate.add(invoice.getId());
             }
@@ -234,11 +239,13 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         }
 
         if (transaction.getBankAccountId() != null && transaction.getCreditCardId() != null) {
-            throw new DomainException("A transação não pode estar associada a uma conta bancária e cartão de crédito simultaneamente.");
+            throw new DomainException(
+                    "A transação não pode estar associada a uma conta bancária e cartão de crédito simultaneamente.");
         }
 
         if (transaction.getBankAccountId() != null) {
-            if (!bankAccountRepositoryPort.existsByIdAndProfileId(transaction.getBankAccountId(), transaction.getProfileId())) {
+            if (!bankAccountRepositoryPort.existsByIdAndProfileId(transaction.getBankAccountId(),
+                    transaction.getProfileId())) {
                 throw new ResourceNotFoundException("Conta bancária não encontrada.");
             }
         }
@@ -262,15 +269,38 @@ public class TransactionServiceAdapter implements TransactionServicePort {
             throw new DomainException("O valor da transação deve ser maior que zero.");
         }
 
-        String description = transaction.getDescription() != null ? transaction.getDescription() : existingTransaction.getDescription();
+        String description = transaction.getDescription() != null ? transaction.getDescription()
+                : existingTransaction.getDescription();
         if (description == null || description.trim().isEmpty()) {
             throw new DomainException("A descrição da transação é obrigatória.");
         }
 
         if (transaction.getCategoryId() != null) {
-            if (!categoryRepositoryPort.existsByIdAndProfileId(transaction.getCategoryId(), existingTransaction.getProfileId())) {
+            if (!categoryRepositoryPort.existsByIdAndProfileId(transaction.getCategoryId(),
+                    existingTransaction.getProfileId())) {
                 throw new ResourceNotFoundException("Categoria não encontrada.");
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public Transaction uploadReceipt(UUID id, UUID profileId, InputStream content, String contentType, long size) {
+        Set<String> allowedTypes = Set.of("image/jpeg", "image/jpg", "image/png", "application/pdf");
+        if (contentType == null || !allowedTypes.contains(contentType.toLowerCase())) {
+            throw new DomainException("Tipo de arquivo não permitido. Tipos aceitos: JPG, JPEG, PNG, PDF.");
+        }
+
+        Transaction transaction = findByIdAndProfileId(id, profileId);
+
+        String attachmentKey = UUID.randomUUID().toString();
+
+        Map<String, String> tags = Map.of(
+                "transactionId", id.toString(),
+                "profileId", profileId.toString());
+        storagePort.upload(attachmentKey, content, contentType, size, tags);
+
+        transaction.setAttachmentKey(attachmentKey);
+        return transactionRepositoryPort.update(transaction);
     }
 }
