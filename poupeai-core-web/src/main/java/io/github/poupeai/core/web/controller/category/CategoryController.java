@@ -1,8 +1,12 @@
 package io.github.poupeai.core.web.controller.category;
 
 import io.github.poupeai.core.domain.model.Category;
+import io.github.poupeai.core.domain.model.CategoryFilter;
+import io.github.poupeai.core.domain.model.CategoryType;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.CategoryServicePort;
 import io.github.poupeai.core.web.dto.category.CategoryResponse;
+import io.github.poupeai.core.web.dto.common.PageResponse;
 import io.github.poupeai.core.web.mapper.category.CategoryControllerMapper;
 import io.github.poupeai.core.web.security.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,12 +23,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import io.github.poupeai.core.web.dto.category.CategoryUpdateRequest;
 import jakarta.validation.Valid;
 
 import java.util.UUID;
-import java.util.List;
 import io.github.poupeai.core.web.dto.category.CategoryRequest;
 
 
@@ -38,15 +42,41 @@ public class CategoryController {
 
     @GetMapping
     @Operation(
-        summary = "Obter minhas categorias",
-        description = "Retorna todas as categorias do usuário",
-        security = @SecurityRequirement(name = "bearer-key")
+            summary = "Obter minhas categorias",
+            description = "Retorna todas as categorias do usuário",
+            security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<List<CategoryResponse>> getCategories(
-        @Parameter(hidden = true) @CurrentUserId String userId) {
+    public ResponseEntity<PageResponse<CategoryResponse>> getCategories(
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) CategoryType type,
+            @RequestParam(defaultValue = "ASC") String sortDirection,
+            @RequestParam(defaultValue = "name") String sortBy
+    ) {
+        CategoryFilter filter = CategoryFilter.builder()
+                .page(page)
+                .size(size)
+                .name(name)
+                .type(type)
+                .sortDirection(sortDirection)
+                .sortBy(sortBy)
+                .build();
 
-        List<Category> categories = categoryServicePort.findAllByProfileId(UUID.fromString(userId));
-        return ResponseEntity.ok(categoryMapper.toResponseList(categories));
+        PageDomain<Category> pageResult = categoryServicePort.search(UUID.fromString(userId), filter);
+
+        var responseContent = categoryMapper.toResponseList(pageResult.getContent());
+
+        PageResponse<CategoryResponse> response = PageResponse.<CategoryResponse>builder()
+                .content(responseContent)
+                .page(pageResult.getPage())
+                .size(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("{id}")

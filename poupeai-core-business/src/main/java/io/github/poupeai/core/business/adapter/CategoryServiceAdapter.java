@@ -4,6 +4,8 @@ import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
 
+import io.github.poupeai.core.domain.model.CategoryFilter;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.CategoryServicePort;
 import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 
@@ -54,5 +56,13 @@ public class CategoryServiceAdapter implements CategoryServicePort {
             throw new ResourceNotFoundException("Categoria não encontrada.");
         }
         categoryRepositoryPort.delete(id);
+    }
+
+    @Override
+    public PageDomain<Category> search(UUID profileId, CategoryFilter filter) {
+        if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
+            filter.setSortBy("name");
+        }
+        return categoryRepositoryPort.search(profileId, filter);
     }
 }
