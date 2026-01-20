@@ -18,6 +18,7 @@ public class BankAccountResponse {
     private String name;
     private String description;
     private BigDecimal initialBalance;
+    private BigDecimal currentBalance;
     private Boolean isDefault;
     private Long institutionId;
     private OffsetDateTime createdAt;

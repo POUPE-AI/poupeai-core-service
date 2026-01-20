@@ -36,8 +36,17 @@ public class BankAccountController {
     public ResponseEntity<List<BankAccountResponse>> getBankAccounts(
         @Parameter(hidden = true) @CurrentUserId String userId) {
 
-        List<BankAccount> bankAccounts = bankAccountServicePort.findAllByProfileId(UUID.fromString(userId));
-        return ResponseEntity.ok(bankAccountMapper.toResponseList(bankAccounts));
+        UUID profileId = UUID.fromString(userId);
+        List<BankAccount> bankAccounts = bankAccountServicePort.findAllByProfileId(profileId);
+        List<BankAccountResponse> responses = bankAccountMapper.toResponseList(bankAccounts);
+        
+        for (int i = 0; i < responses.size(); i++) {
+            responses.get(i).setCurrentBalance(
+                bankAccountServicePort.calculateCurrentBalance(bankAccounts.get(i).getId(), profileId)
+            );
+        }
+        
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/{id}")
@@ -50,8 +59,11 @@ public class BankAccountController {
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
 
-        BankAccount bankAccount = bankAccountServicePort.findByIdAndProfileId(id, UUID.fromString(userId));
-        return ResponseEntity.ok(bankAccountMapper.toResponse(bankAccount));
+        UUID profileId = UUID.fromString(userId);
+        BankAccount bankAccount = bankAccountServicePort.findByIdAndProfileId(id, profileId);
+        BankAccountResponse response = bankAccountMapper.toResponse(bankAccount);
+        response.setCurrentBalance(bankAccountServicePort.calculateCurrentBalance(id, profileId));
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping

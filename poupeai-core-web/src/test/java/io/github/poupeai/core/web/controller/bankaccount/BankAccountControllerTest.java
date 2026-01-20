@@ -39,19 +39,24 @@ class BankAccountControllerTest {
     @Test
     @DisplayName("Should get all bank accounts for user")
     void shouldGetBankAccountsSuccessfully() {
-        String userId = UUID.randomUUID().toString();
-        List<BankAccount> bankAccounts = List.of(new BankAccount());
-        List<BankAccountResponse> responses = List.of(
-                new BankAccountResponse(null, null, null, null, null, null, null, null)
-        );
+        UUID userId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
+        BankAccount bankAccount = BankAccount.builder().id(accountId).profileId(userId).build();
+        List<BankAccount> bankAccounts = List.of(bankAccount);
+        BankAccountResponse response = BankAccountResponse.builder()
+                .id(accountId)
+                .build();
+        List<BankAccountResponse> responses = List.of(response);
 
-        when(bankAccountServicePort.findAllByProfileId(UUID.fromString(userId))).thenReturn(bankAccounts);
+        when(bankAccountServicePort.findAllByProfileId(userId)).thenReturn(bankAccounts);
         when(bankAccountMapper.toResponseList(bankAccounts)).thenReturn(responses);
+        when(bankAccountServicePort.calculateCurrentBalance(accountId, userId)).thenReturn(BigDecimal.valueOf(1000));
 
-        ResponseEntity<List<BankAccountResponse>> result = bankAccountController.getBankAccounts(userId);
+        ResponseEntity<List<BankAccountResponse>> result = bankAccountController.getBankAccounts(userId.toString());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(responses, result.getBody());
+        assertEquals(1, result.getBody().size());
+        assertEquals(BigDecimal.valueOf(1000), result.getBody().get(0).getCurrentBalance());
     }
 
     @Test
@@ -60,15 +65,18 @@ class BankAccountControllerTest {
         UUID userId = UUID.randomUUID();
         UUID accountId = UUID.randomUUID();
         BankAccount account = BankAccount.builder().id(accountId).profileId(userId).build();
-        BankAccountResponse response = new BankAccountResponse(accountId, null, null, null, null, null, null, null);
+        BankAccountResponse response = BankAccountResponse.builder()
+                .id(accountId)
+                .build();
 
         when(bankAccountServicePort.findByIdAndProfileId(accountId, userId)).thenReturn(account);
         when(bankAccountMapper.toResponse(account)).thenReturn(response);
+        when(bankAccountServicePort.calculateCurrentBalance(accountId, userId)).thenReturn(BigDecimal.valueOf(500));
 
         ResponseEntity<BankAccountResponse> result = bankAccountController.getBankAccountById(userId.toString(), accountId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(response, result.getBody());
+        assertEquals(BigDecimal.valueOf(500), result.getBody().getCurrentBalance());
     }
 
     @Test
@@ -81,7 +89,10 @@ class BankAccountControllerTest {
                 .build();
         BankAccount account = new BankAccount();
         BankAccount savedAccount = new BankAccount();
-        BankAccountResponse response = new BankAccountResponse(null, "Nubank", null, BigDecimal.valueOf(1000), null, null, null, null);
+        BankAccountResponse response = BankAccountResponse.builder()
+                .name("Nubank")
+                .initialBalance(BigDecimal.valueOf(1000))
+                .build();
 
         when(bankAccountMapper.toDomain(eq(request), any(UUID.class))).thenReturn(account);
         when(bankAccountServicePort.create(account)).thenReturn(savedAccount);
@@ -104,7 +115,11 @@ class BankAccountControllerTest {
                 .isDefault(true)
                 .build();
         BankAccount account = BankAccount.builder().id(accountId).profileId(userId).build();
-        BankAccountResponse response = new BankAccountResponse(accountId, "Updated Name", null, null, true, null, null, null);
+        BankAccountResponse response = BankAccountResponse.builder()
+                .id(accountId)
+                .name("Updated Name")
+                .isDefault(true)
+                .build();
 
         when(bankAccountServicePort.findByIdAndProfileId(accountId, userId)).thenReturn(account);
         doNothing().when(bankAccountMapper).updateDomainFromDto(eq(request), eq(account));
