@@ -6,7 +6,7 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
-import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,6 @@ import java.util.Map;
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class MinioStorageAdapter implements StoragePort {
 
     @Value("${minio.bucket-name:poupeai-receipts}")
@@ -31,9 +30,10 @@ public class MinioStorageAdapter implements StoragePort {
     @Value("${minio.secret-key:minioadmin}")
     private String secretKey;
 
+    @Setter
     private MinioClient minioClient;
 
-    private MinioClient getClient() {
+    MinioClient getClient() {
         if (minioClient == null) {
             minioClient = MinioClient.builder()
                     .endpoint(endpoint)
@@ -41,6 +41,14 @@ public class MinioStorageAdapter implements StoragePort {
                     .build();
         }
         return minioClient;
+    }
+
+    String getBucketName() {
+        return bucketName;
+    }
+
+    void setBucketName(String bucketName) {
+        this.bucketName = bucketName;
     }
 
     @Override
