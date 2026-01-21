@@ -126,6 +126,10 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
         UUID invoiceId = transaction.getInvoiceId();
 
+        if (transaction.getAttachmentKey() != null) {
+            storagePort.delete(transaction.getAttachmentKey());
+        }
+
         if (Boolean.TRUE.equals(transaction.getIsInstallment()) && transaction.getPurchaseGroupUuid() != null) {
             transactionRepositoryPort.deleteByPurchaseGroupUuid(transaction.getPurchaseGroupUuid());
         } else {
@@ -293,6 +297,10 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
         Transaction transaction = findByIdAndProfileId(id, profileId);
 
+        if (transaction.getAttachmentKey() != null) {
+            storagePort.delete(transaction.getAttachmentKey());
+        }
+
         String attachmentKey = UUID.randomUUID().toString();
 
         Map<String, String> tags = Map.of(
@@ -301,6 +309,20 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         storagePort.upload(attachmentKey, content, contentType, size, tags);
 
         transaction.setAttachmentKey(attachmentKey);
+        return transactionRepositoryPort.update(transaction);
+    }
+
+    @Override
+    @Transactional
+    public Transaction deleteReceipt(UUID id, UUID profileId) {
+        Transaction transaction = findByIdAndProfileId(id, profileId);
+
+        if (transaction.getAttachmentKey() == null) {
+            throw new DomainException("Esta transação não possui comprovante.");
+        }
+
+        storagePort.delete(transaction.getAttachmentKey());
+        transaction.setAttachmentKey(null);
         return transactionRepositoryPort.update(transaction);
     }
 }

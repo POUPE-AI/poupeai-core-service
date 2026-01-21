@@ -5,4 +5,6 @@ import java.util.Map;
 
 public interface StoragePort {
     void upload(String key, InputStream content, String contentType, long size, Map<String, String> tags);
+
+    void delete(String key);
 }

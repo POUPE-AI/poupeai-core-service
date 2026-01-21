@@ -18,4 +18,6 @@ public interface TransactionServicePort {
     void delete(UUID id, UUID profileId);
 
     Transaction uploadReceipt(UUID id, UUID profileId, InputStream content, String contentType, long size);
+
+    Transaction deleteReceipt(UUID id, UUID profileId);
 }

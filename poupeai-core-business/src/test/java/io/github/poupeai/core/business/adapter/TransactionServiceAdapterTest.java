@@ -736,5 +736,91 @@ class TransactionServiceAdapterTest {
                                         () -> transactionServiceAdapter.uploadReceipt(
                                                         transactionId, profileId, content, "image/png", 10L));
                 }
+
+                @Test
+                @DisplayName("Should delete old attachment when replacing receipt")
+                void shouldDeleteOldAttachmentWhenReplacingReceipt() {
+                        UUID profileId = UUID.randomUUID();
+                        UUID transactionId = UUID.randomUUID();
+                        String oldAttachmentKey = "old-attachment-key";
+                        Transaction transaction = Transaction.builder()
+                                        .id(transactionId)
+                                        .profileId(profileId)
+                                        .attachmentKey(oldAttachmentKey)
+                                        .build();
+
+                        when(transactionRepositoryPort.findByIdAndProfileId(transactionId, profileId))
+                                        .thenReturn(Optional.of(transaction));
+                        when(transactionRepositoryPort.update(any())).thenAnswer(inv -> inv.getArgument(0));
+
+                        java.io.InputStream content = new java.io.ByteArrayInputStream("new image".getBytes());
+                        transactionServiceAdapter.uploadReceipt(
+                                        transactionId, profileId, content, "image/jpeg", 10L);
+
+                        verify(storagePort).delete(oldAttachmentKey);
+                        verify(storagePort).upload(anyString(), any(), eq("image/jpeg"), eq(10L), any());
+                }
+        }
+
+        @Nested
+        @DisplayName("Delete Receipt Tests")
+        class DeleteReceiptTests {
+
+                @Test
+                @DisplayName("Should delete receipt successfully")
+                void shouldDeleteReceiptSuccessfully() {
+                        UUID profileId = UUID.randomUUID();
+                        UUID transactionId = UUID.randomUUID();
+                        String attachmentKey = "test-attachment-key";
+                        Transaction transaction = Transaction.builder()
+                                        .id(transactionId)
+                                        .profileId(profileId)
+                                        .attachmentKey(attachmentKey)
+                                        .build();
+
+                        when(transactionRepositoryPort.findByIdAndProfileId(transactionId, profileId))
+                                        .thenReturn(Optional.of(transaction));
+                        when(transactionRepositoryPort.update(any())).thenAnswer(inv -> inv.getArgument(0));
+
+                        Transaction result = transactionServiceAdapter.deleteReceipt(transactionId, profileId);
+
+                        assertNull(result.getAttachmentKey());
+                        verify(storagePort).delete(attachmentKey);
+                        verify(transactionRepositoryPort).update(any());
+                }
+
+                @Test
+                @DisplayName("Should throw exception when no receipt exists")
+                void shouldThrowExceptionWhenNoReceiptExists() {
+                        UUID profileId = UUID.randomUUID();
+                        UUID transactionId = UUID.randomUUID();
+                        Transaction transaction = Transaction.builder()
+                                        .id(transactionId)
+                                        .profileId(profileId)
+                                        .attachmentKey(null)
+                                        .build();
+
+                        when(transactionRepositoryPort.findByIdAndProfileId(transactionId, profileId))
+                                        .thenReturn(Optional.of(transaction));
+
+                        DomainException exception = assertThrows(DomainException.class,
+                                        () -> transactionServiceAdapter.deleteReceipt(transactionId, profileId));
+
+                        assertEquals("Esta transação não possui comprovante.", exception.getMessage());
+                        verify(storagePort, never()).delete(any());
+                }
+
+                @Test
+                @DisplayName("Should throw exception when transaction not found")
+                void shouldThrowExceptionWhenTransactionNotFoundForDelete() {
+                        UUID profileId = UUID.randomUUID();
+                        UUID transactionId = UUID.randomUUID();
+
+                        when(transactionRepositoryPort.findByIdAndProfileId(transactionId, profileId))
+                                        .thenReturn(Optional.empty());
+
+                        assertThrows(ResourceNotFoundException.class,
+                                        () -> transactionServiceAdapter.deleteReceipt(transactionId, profileId));
+                }
         }
 }

@@ -5,6 +5,7 @@ import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,6 +70,22 @@ public class MinioStorageAdapter implements StoragePort {
         } catch (Exception e) {
             log.error("Erro ao enviar arquivo para o MinIO", e);
             throw new RuntimeException("Falha ao enviar arquivo para o storage", e);
+        }
+    }
+
+    @Override
+    public void delete(String key) {
+        try {
+            MinioClient client = getClient();
+            client.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(key)
+                            .build());
+            log.info("Arquivo removido com sucesso: bucket='{}', key='{}'", bucketName, key);
+        } catch (Exception e) {
+            log.error("Erro ao remover arquivo do MinIO: key='{}'", key, e);
+            throw new RuntimeException("Falha ao remover arquivo do storage", e);
         }
     }
 }

@@ -112,4 +112,16 @@ public class TransactionController {
 
         return ResponseEntity.ok(transactionMapper.toResponse(transaction));
     }
+
+    @DeleteMapping("/{id}/receipt")
+    @Operation(summary = "Remover comprovante", description = "Remove o comprovante de uma transação.", security = @SecurityRequirement(name = "bearer-key"))
+    public ResponseEntity<TransactionResponse> deleteReceipt(
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @PathVariable UUID id) {
+
+        UUID profileId = UUID.fromString(userId);
+        Transaction transaction = transactionServicePort.deleteReceipt(id, profileId);
+
+        return ResponseEntity.ok(transactionMapper.toResponse(transaction));
+    }
 }
