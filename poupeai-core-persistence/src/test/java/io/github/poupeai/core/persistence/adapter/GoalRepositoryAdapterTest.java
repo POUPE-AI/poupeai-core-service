@@ -40,6 +40,9 @@ class GoalRepositoryAdapterTest {
     @Mock
     private ProfileRepository profileRepository;
 
+    @Mock
+    private io.github.poupeai.core.persistence.repository.GoalDepositRepository goalDepositRepository;
+
     @Test
     @DisplayName("Should persist goal and link profile when data is valid")
     void createShouldPersistWhenDataIsValid() {

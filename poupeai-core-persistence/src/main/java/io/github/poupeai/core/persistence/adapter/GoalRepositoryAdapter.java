@@ -93,6 +93,9 @@ public class GoalRepositoryAdapter implements GoalRepositoryPort {
 
     private BigDecimal calculateCurrentBalance(UUID goalId, BigDecimal initialBalance) {
         var deposits = goalDepositRepository.findAllByGoal_Id(goalId);
+        if (deposits == null || deposits.isEmpty()) {
+            return (initialBalance == null ? BigDecimal.ZERO : initialBalance);
+        }
         BigDecimal sum = deposits.stream()
             .map(e -> e.getDepositAmount() == null ? BigDecimal.ZERO : e.getDepositAmount())
             .reduce(BigDecimal.ZERO, BigDecimal::add);
