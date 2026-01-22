@@ -19,6 +19,13 @@ public class GoalRequest {
     @NotBlank
     private String name;
     
+    private String description;
+
+    @NotBlank
+    private String colorHex;
+    
+    private BigDecimal initialBalance;
+
     @NotNull
     @Positive
     private BigDecimal goalAmount;

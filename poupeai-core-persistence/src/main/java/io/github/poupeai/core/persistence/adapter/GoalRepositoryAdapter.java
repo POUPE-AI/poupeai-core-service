@@ -46,6 +46,9 @@ public class GoalRepositoryAdapter implements GoalRepositoryPort {
         var profile = profileRepository.getReferenceById(goal.getProfileId());
         existingGoal.setProfile(profile);
         existingGoal.setName(goal.getName());
+        existingGoal.setDescription(goal.getDescription());
+        existingGoal.setColorHex(goal.getColorHex());
+        existingGoal.setInitialBalance(goal.getInitialBalance());
         existingGoal.setGoalAmount(goal.getGoalAmount());
         existingGoal.setTargetDate(goal.getTargetDate());
         existingGoal.setCompletedAt(goal.getCompletedAt());

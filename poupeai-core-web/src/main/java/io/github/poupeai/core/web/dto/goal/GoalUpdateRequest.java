@@ -15,7 +15,10 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class GoalUpdateRequest {
     private String name;
-    
+    private String description;
+    private String colorHex;
+    private BigDecimal initialBalance;
+
     @Positive
     private BigDecimal goalAmount;
     
