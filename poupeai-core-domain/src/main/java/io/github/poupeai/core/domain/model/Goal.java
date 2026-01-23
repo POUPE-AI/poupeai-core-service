@@ -18,7 +18,11 @@ public class Goal {
     private UUID id;
     private UUID profileId;
     private String name;
+    private String description;
+    private String colorHex;
+    private BigDecimal initialBalance;
     private BigDecimal goalAmount;
+    private BigDecimal currentBalance;
     private LocalDate targetDate;
     private LocalDate completedAt;
     private OffsetDateTime createdAt;

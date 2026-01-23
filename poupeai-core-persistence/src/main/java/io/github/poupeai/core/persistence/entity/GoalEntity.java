@@ -51,6 +51,15 @@ public class GoalEntity {
     @Column(name = "completed_at")
     private LocalDate completedAt;
 
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "color_hex")
+    private String colorHex;
+
+    @Column(name = "initial_balance", precision = 15, scale = 2)
+    private java.math.BigDecimal initialBalance;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

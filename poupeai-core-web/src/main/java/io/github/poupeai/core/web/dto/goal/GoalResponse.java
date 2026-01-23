@@ -17,7 +17,12 @@ import java.util.UUID;
 public class GoalResponse {
     private UUID id;
     private String name;
+    private String description;
+    private String colorHex;
+    private BigDecimal initialBalance;
     private BigDecimal goalAmount;
+    private BigDecimal currentBalance;
+    private BigDecimal percentageCompleted;
     private LocalDate targetDate;
     private LocalDate completedAt;
     private OffsetDateTime createdAt;
