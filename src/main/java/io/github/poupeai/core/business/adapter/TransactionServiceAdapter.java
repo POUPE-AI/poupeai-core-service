@@ -6,7 +6,9 @@ import io.github.poupeai.core.domain.model.Category;
 import io.github.poupeai.core.domain.model.CategoryType;
 import io.github.poupeai.core.domain.model.CreditCard;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.model.Transaction;
+import io.github.poupeai.core.domain.model.TransactionFilter;
 import io.github.poupeai.core.domain.model.TransactionType;
 import io.github.poupeai.core.domain.port.business.InvoiceServicePort;
 import io.github.poupeai.core.domain.port.business.TransactionServicePort;
@@ -324,5 +326,13 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         storagePort.delete(transaction.getAttachmentKey());
         transaction.setAttachmentKey(null);
         return transactionRepositoryPort.update(transaction);
+    }
+
+    @Override
+    public PageDomain<Transaction> search(UUID profileId, TransactionFilter filter) {
+        if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
+            filter.setSortBy("description");
+        }
+        return transactionRepositoryPort.search(profileId, filter);
     }
 }

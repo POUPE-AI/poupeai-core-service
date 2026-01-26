@@ -1,7 +1,11 @@
 package io.github.poupeai.core.web.controller.transaction;
 
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.model.Transaction;
+import io.github.poupeai.core.domain.model.TransactionFilter;
+import io.github.poupeai.core.domain.model.TransactionType;
 import io.github.poupeai.core.domain.port.business.TransactionServicePort;
+import io.github.poupeai.core.web.dto.common.PageResponse;
 import io.github.poupeai.core.web.dto.transaction.TransactionRequest;
 import io.github.poupeai.core.web.dto.transaction.TransactionResponse;
 import io.github.poupeai.core.web.dto.transaction.TransactionUpdateRequest;
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -36,12 +41,39 @@ public class TransactionController {
 
     @GetMapping
     @Operation(summary = "Listar transações", description = "Retorna todas as transações do usuário", security = @SecurityRequirement(name = "bearer-key"))
-    public ResponseEntity<List<TransactionResponse>> getTransactions(
-            @Parameter(hidden = true) @CurrentUserId String userId) {
+    public ResponseEntity<PageResponse<TransactionResponse>> getTransactions(
+            @Parameter(hidden = true) @CurrentUserId String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID purchaseGroupUuid,
+            @RequestParam(defaultValue = "ASC") String sortDirection,
+            @RequestParam(defaultValue = "description") String sortBy
+    ) {
+        TransactionFilter filter = TransactionFilter.builder()
+                .page(page)
+                .size(size)
+                .type(type)
+                .categoryId(categoryId)
+                .purchaseGroupUuid(purchaseGroupUuid)
+                .sortDirection(sortDirection)
+                .sortBy(sortBy)
+                .build();
 
-        UUID profileId = UUID.fromString(userId);
-        List<Transaction> transactions = transactionServicePort.findAllByProfileId(profileId);
-        return ResponseEntity.ok(transactionMapper.toResponseList(transactions));
+        PageDomain<Transaction> pageResult = transactionServicePort.search(UUID.fromString(userId), filter);
+
+        var responseContent = transactionMapper.toResponseList(pageResult.getContent());
+
+        PageResponse<TransactionResponse> response =  PageResponse.<TransactionResponse>builder()
+                .content(responseContent)
+                .page(pageResult.getPage())
+                .size(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
