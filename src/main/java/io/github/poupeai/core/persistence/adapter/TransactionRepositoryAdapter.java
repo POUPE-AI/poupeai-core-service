@@ -214,7 +214,7 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
             }
 
             if (filter.getPurchaseGroupUuid() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("purchaseGroup").get("id"), filter.getPurchaseGroupUuid()));
+                predicates.add(criteriaBuilder.equal(root.get("purchaseGroupUuid"), filter.getPurchaseGroupUuid()));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

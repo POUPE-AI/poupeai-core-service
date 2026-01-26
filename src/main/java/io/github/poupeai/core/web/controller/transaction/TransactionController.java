@@ -49,7 +49,7 @@ public class TransactionController {
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) UUID purchaseGroupUuid,
             @RequestParam(defaultValue = "ASC") String sortDirection,
-            @RequestParam(defaultValue = "name") String sortBy
+            @RequestParam(defaultValue = "description") String sortBy
     ) {
         TransactionFilter filter = TransactionFilter.builder()
                 .page(page)
