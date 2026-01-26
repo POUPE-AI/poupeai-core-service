@@ -1,6 +1,8 @@
 package io.github.poupeai.core.domain.port.business;
 
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.model.Transaction;
+import io.github.poupeai.core.domain.model.TransactionFilter;
 
 import java.io.InputStream;
 import java.util.List;
@@ -20,4 +22,6 @@ public interface TransactionServicePort {
     Transaction uploadReceipt(UUID id, UUID profileId, InputStream content, String contentType, long size);
 
     Transaction deleteReceipt(UUID id, UUID profileId);
+
+    PageDomain<Transaction> search(UUID profileId, TransactionFilter filter);
 }

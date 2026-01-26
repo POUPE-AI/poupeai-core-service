@@ -1,7 +1,9 @@
 package io.github.poupeai.core.persistence.adapter;
 
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.model.Transaction;
+import io.github.poupeai.core.domain.model.TransactionFilter;
 import io.github.poupeai.core.domain.model.TransactionType;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import io.github.poupeai.core.persistence.entity.TransactionEntity;
@@ -12,7 +14,13 @@ import io.github.poupeai.core.persistence.repository.CreditCardRepository;
 import io.github.poupeai.core.persistence.repository.InvoiceRepository;
 import io.github.poupeai.core.persistence.repository.ProfileRepository;
 import io.github.poupeai.core.persistence.repository.TransactionRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -182,5 +190,45 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
         if (transaction.getInvoiceId() != null) {
             entity.setInvoice(invoiceRepository.getReferenceById(transaction.getInvoiceId()));
         }
+    }
+
+    @Override
+    public PageDomain<Transaction> search(UUID profileId, TransactionFilter filter) {
+        Sort sort = Sort.by(
+                Sort.Direction.fromString(filter.getSortDirection() != null ? filter.getSortDirection() : "ASC"),
+                filter.getSortBy() != null ? filter.getSortBy() : "description"
+        );
+        Pageable pageable = PageRequest.of(filter.getPage(), filter.getSize(), sort);
+
+        Specification<TransactionEntity> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(criteriaBuilder.equal(root.get("profile").get("userId"), profileId));
+
+            if (filter.getType() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("type"), filter.getType()));
+            }
+
+            if (filter.getCategoryId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("category").get("id"), filter.getCategoryId()));
+            }
+
+            if (filter.getPurchaseGroupUuid() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("purchaseGroup").get("id"), filter.getPurchaseGroupUuid()));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<TransactionEntity> pageResult = transactionRepository.findAll(spec, pageable);
+        List<Transaction> domainContent = transactionMapper.toDomainList(pageResult.getContent());
+
+        return PageDomain.<Transaction>builder()
+                .content(domainContent)
+                .page(pageResult.getNumber())
+                .size(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .build();
     }
 }
