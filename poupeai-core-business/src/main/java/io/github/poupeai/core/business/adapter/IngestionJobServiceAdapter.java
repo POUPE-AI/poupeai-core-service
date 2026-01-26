@@ -6,12 +6,13 @@ import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.model.IngestionJob;
 import io.github.poupeai.core.domain.model.JobStatus;
 import io.github.poupeai.core.domain.port.business.IngestionJobServicePort;
-import io.github.poupeai.core.domain.port.output.MessagePublisherPort;
+import io.github.poupeai.core.domain.port.messaging.IngestionJobProducerPort;
 import io.github.poupeai.core.domain.port.output.StoragePort;
 import io.github.poupeai.core.domain.port.persistence.IngestionJobRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.util.HashMap;
@@ -25,10 +26,11 @@ import java.util.UUID;
 public class IngestionJobServiceAdapter implements IngestionJobServicePort {
 
     private final IngestionJobRepositoryPort ingestionJobRepository;
-    private final MessagePublisherPort messagePublisher;
+    private final IngestionJobProducerPort messagePublisher;
     private final StoragePort storagePort;
 
     @Override
+    @Transactional
     public IngestionJob createIngestionJob(UUID profileId, InputStream fileContent, String fileName, String contentType,
             long size, UUID bankAccountId) {
         log.info("Tentando criar job de ingestão: {}, bankAccount: {}", profileId, bankAccountId);
