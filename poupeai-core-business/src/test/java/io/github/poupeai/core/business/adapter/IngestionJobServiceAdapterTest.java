@@ -4,7 +4,7 @@ import io.github.poupeai.core.domain.event.PoupeAiEvent;
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.model.IngestionJob;
 import io.github.poupeai.core.domain.model.JobStatus;
-import io.github.poupeai.core.domain.port.output.MessagePublisherPort;
+import io.github.poupeai.core.domain.port.messaging.IngestionJobProducerPort;
 import io.github.poupeai.core.domain.port.output.StoragePort;
 import io.github.poupeai.core.domain.port.persistence.IngestionJobRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +32,7 @@ class IngestionJobServiceAdapterTest {
     private IngestionJobRepositoryPort ingestionJobRepository;
 
     @Mock
-    private MessagePublisherPort messagePublisher;
+    private IngestionJobProducerPort messagePublisher;
 
     @Mock
     private StoragePort storagePort;

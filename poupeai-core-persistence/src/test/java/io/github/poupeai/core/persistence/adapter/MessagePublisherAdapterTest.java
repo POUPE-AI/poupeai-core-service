@@ -19,13 +19,13 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MessagePublisherAdapterTest {
+class IngestionJobProducerAdapterTest {
 
     @Mock
     private RabbitTemplate rabbitTemplate;
 
     @InjectMocks
-    private MessagePublisherAdapter adapter;
+    private IngestionJobProducerAdapter adapter;
 
     @Test
     @DisplayName("Should publish message with correlation id from MDC")

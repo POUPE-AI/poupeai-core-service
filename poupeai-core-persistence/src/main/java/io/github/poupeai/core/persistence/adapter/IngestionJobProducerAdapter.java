@@ -1,15 +1,16 @@
 package io.github.poupeai.core.persistence.adapter;
 
-import io.github.poupeai.core.domain.port.output.MessagePublisherPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import io.github.poupeai.core.domain.port.messaging.IngestionJobProducerPort;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class MessagePublisherAdapter implements MessagePublisherPort {
+public class IngestionJobProducerAdapter implements IngestionJobProducerPort {
     private final RabbitTemplate rabbitTemplate;
 
     @org.springframework.beans.factory.annotation.Value("${app.rabbitmq.exchange}")
