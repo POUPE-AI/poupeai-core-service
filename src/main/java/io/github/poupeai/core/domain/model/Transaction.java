@@ -31,6 +31,7 @@ public class Transaction {
     private Category category;
     @With private UUID invoiceId;
     @With private String attachmentKey;
+    private String attachmentUrl;
 
     @Builder.Default
     private Boolean isInstallment = false;

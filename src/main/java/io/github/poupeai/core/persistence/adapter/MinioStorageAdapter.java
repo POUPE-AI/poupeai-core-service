@@ -2,10 +2,12 @@ package io.github.poupeai.core.persistence.adapter;
 
 import io.github.poupeai.core.domain.port.output.StoragePort;
 import io.minio.BucketExistsArgs;
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.http.Method;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -94,6 +96,24 @@ public class MinioStorageAdapter implements StoragePort {
         } catch (Exception e) {
             log.error("Erro ao remover arquivo do MinIO: key='{}'", key, e);
             throw new RuntimeException("Falha ao remover arquivo do storage", e);
+        }
+    }
+
+    @Override
+    public String generatePresignedUrl(String key) {
+        if (key == null || key.isBlank()) return null;
+        try {
+            return getClient().getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .method(Method.GET)
+                            .bucket(bucketName)
+                            .object(key)
+                            .expiry(900)
+                            .build()
+            );
+        } catch (Exception e) {
+            log.error("Erro ao gerar URL para key: {}", key, e);
+            return null;
         }
     }
 }

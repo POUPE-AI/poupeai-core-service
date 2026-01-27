@@ -104,8 +104,10 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
     @Override
     public Transaction findByIdAndProfileId(UUID id, UUID profileId) {
-        return transactionRepositoryPort.findByIdAndProfileId(id, profileId)
+        Transaction t = transactionRepositoryPort.findByIdAndProfileId(id, profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada."));
+        enrichWithUrl(t);
+        return t;
     }
 
     @Override
@@ -142,7 +144,10 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
             filter.setSortBy("transactionDate");
         }
-        return transactionRepositoryPort.search(profileId, filter);
+        PageDomain<Transaction> page = transactionRepositoryPort.search(profileId, filter);
+
+        page.getContent().forEach(this::enrichWithUrl);
+        return page;
     }
 
     @Override
@@ -167,7 +172,9 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         storagePort.upload(key, content, contentType, size, tags);
 
         Transaction updated = transaction.withAttachmentKey(key);
-        return transactionRepositoryPort.update(updated);
+        Transaction saved = transactionRepositoryPort.update(updated);
+        enrichWithUrl(saved);
+        return saved;
     }
 
     @Override
@@ -217,5 +224,11 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
     private TransactionType mapCategoryTypeToTransactionType(CategoryType categoryType) {
         return categoryType == CategoryType.INCOME ? TransactionType.INCOME : TransactionType.EXPENSE;
+    }
+
+    private void enrichWithUrl(Transaction t) {
+        if (t.getAttachmentKey() != null) {
+            t.setAttachmentUrl(storagePort.generatePresignedUrl(t.getAttachmentKey()));
+        }
     }
 }
