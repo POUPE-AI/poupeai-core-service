@@ -59,7 +59,7 @@ public class InvoicePaymentServiceAdapter implements InvoicePaymentServicePort {
                 .type(TransactionType.EXPENSE)
                 .transactionDate(LocalDate.now())
                 .bankAccountId(bankAccountId)
-                .categoryId(expenseCategory.getId())
+                .category(expenseCategory)
                 .isInstallment(false)
                 .build();
 

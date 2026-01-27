@@ -1,6 +1,8 @@
 package io.github.poupeai.core.domain.port.persistence;
 
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.model.Transaction;
+import io.github.poupeai.core.domain.model.TransactionFilter;
 import io.github.poupeai.core.domain.model.TransactionType;
 
 import java.math.BigDecimal;
@@ -12,8 +14,6 @@ public interface TransactionRepositoryPort {
     Transaction create(Transaction transaction);
     
     Transaction update(Transaction transaction);
-    
-    Optional<Transaction> findById(UUID id);
     
     Optional<Transaction> findByIdAndProfileId(UUID id, UUID profileId);
     
@@ -38,4 +38,6 @@ public interface TransactionRepositoryPort {
     void deleteByInvoiceId(UUID invoiceId);
     
     List<Transaction> createAll(List<Transaction> transactions);
+
+    PageDomain<Transaction> search(UUID profileId, TransactionFilter filter);
 }

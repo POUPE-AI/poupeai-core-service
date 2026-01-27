@@ -1,6 +1,7 @@
 package io.github.poupeai.core.web.dto.transaction;
 
 import io.github.poupeai.core.domain.model.TransactionType;
+import io.github.poupeai.core.web.dto.category.CategorySummary;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,15 +22,20 @@ public class TransactionResponse {
     private BigDecimal amount;
     private TransactionType type;
     private LocalDate transactionDate;
+
     private UUID bankAccountId;
     private UUID creditCardId;
-    private UUID categoryId;
+    private CategorySummary category;
+
     private UUID invoiceId;
     private String attachmentKey;
+    private String attachmentUrl;
+
     private Boolean isInstallment;
     private Integer installmentNumber;
     private Integer totalInstallments;
     private UUID purchaseGroupUuid;
+
     private String originalStatementId;
     private String originalStatementDescription;
     private OffsetDateTime createdAt;

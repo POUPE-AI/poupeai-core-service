@@ -1,5 +1,9 @@
 package io.github.poupeai.core.web.dto.transaction;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -15,21 +19,33 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TransactionUpdateRequest {
+public class CreateTransactionRequest {
+    @NotBlank(message = "A descrição é obrigatória.")
     @Size(max = 255, message = "A descrição deve ter no máximo 255 caracteres.")
     private String description;
 
+    @NotNull(message = "O valor é obrigatório.")
     @Positive(message = "O valor deve ser maior que zero.")
     private BigDecimal amount;
 
+    @NotNull(message = "A data da transação é obrigatória.")
     private LocalDate transactionDate;
 
+    private UUID bankAccountId;
+
+    private UUID creditCardId;
+
+    @NotNull(message = "A categoria é obrigatória.")
     private UUID categoryId;
 
-    @Size(max = 255, message = "A chave deve ter no máximo 255 caracteres.")
-    private String attachmentKey;
+    @Builder.Default
+    private Boolean isInstallment = false;
 
-    @Size(max = 100, message = "O ID do extrato deve ter no máximo 100 caracteres.")
+    @Min(value = 2, message = "Mínimo de 2 parcelas.")
+    @Max(value = 48, message = "Máximo de 48 parcelas.")
+    private Integer totalInstallments;
+
+    @Size(max = 100)
     private String originalStatementId;
 
     private String originalStatementDescription;

@@ -44,14 +44,14 @@ public class TransactionEntity {
     )
     private ProfileEntity profile;
 
-    @Column(name = "description", nullable = false, length = 255)
+    @Column(nullable = false)
     private String description;
 
-    @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
+    @Column(nullable = false)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private TransactionType type;
 
@@ -82,7 +82,7 @@ public class TransactionEntity {
     )
     private InvoiceEntity invoice;
 
-    @Column(name = "attachment_key", length = 255)
+    @Column(name = "attachment_key")
     private String attachmentKey;
 
     @Column(name = "is_installment")

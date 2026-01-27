@@ -1,14 +1,11 @@
 package io.github.poupeai.core.persistence.adapter;
 
-import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
+import io.github.poupeai.core.domain.model.Category;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.model.Transaction;
+import io.github.poupeai.core.domain.model.TransactionFilter;
 import io.github.poupeai.core.domain.model.TransactionType;
-import io.github.poupeai.core.persistence.entity.BankAccountEntity;
-import io.github.poupeai.core.persistence.entity.CategoryEntity;
-import io.github.poupeai.core.persistence.entity.CreditCardEntity;
-import io.github.poupeai.core.persistence.entity.InvoiceEntity;
-import io.github.poupeai.core.persistence.entity.ProfileEntity;
-import io.github.poupeai.core.persistence.entity.TransactionEntity;
+import io.github.poupeai.core.persistence.entity.*;
 import io.github.poupeai.core.persistence.mapper.TransactionEntityMapper;
 import io.github.poupeai.core.persistence.repository.BankAccountRepository;
 import io.github.poupeai.core.persistence.repository.CategoryRepository;
@@ -22,16 +19,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TransactionRepositoryAdapterTest {
@@ -66,11 +70,11 @@ class TransactionRepositoryAdapterTest {
         UUID profileId = UUID.randomUUID();
         UUID bankAccountId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
-        
+
         Transaction domain = Transaction.builder()
                 .profileId(profileId)
                 .bankAccountId(bankAccountId)
-                .categoryId(categoryId)
+                .category(Category.builder().id(categoryId).build())
                 .description("Test")
                 .amount(BigDecimal.valueOf(100))
                 .build();
@@ -107,7 +111,7 @@ class TransactionRepositoryAdapterTest {
         Transaction domain = Transaction.builder()
                 .profileId(profileId)
                 .creditCardId(creditCardId)
-                .categoryId(categoryId)
+                .category(Category.builder().id(categoryId).build())
                 .invoiceId(invoiceId)
                 .description("Test")
                 .amount(BigDecimal.valueOf(100))
@@ -135,75 +139,60 @@ class TransactionRepositoryAdapterTest {
     }
 
     @Test
-    @DisplayName("Should update transaction successfully")
+    @DisplayName("Should update transaction successfully (via save/upsert)")
     void shouldUpdateTransactionSuccessfully() {
         UUID transactionId = UUID.randomUUID();
         UUID profileId = UUID.randomUUID();
-        UUID bankAccountId = UUID.randomUUID();
         UUID categoryId = UUID.randomUUID();
 
         Transaction domain = Transaction.builder()
                 .id(transactionId)
                 .profileId(profileId)
-                .bankAccountId(bankAccountId)
-                .categoryId(categoryId)
+                .category(Category.builder().id(categoryId).build())
                 .description("Updated")
                 .amount(BigDecimal.valueOf(200))
-                .type(TransactionType.EXPENSE)
-                .transactionDate(LocalDate.now())
                 .build();
 
-        TransactionEntity existingEntity = new TransactionEntity();
-        BankAccountEntity bankAccountProxy = new BankAccountEntity();
+        TransactionEntity entity = new TransactionEntity();
+        ProfileEntity profileProxy = new ProfileEntity();
         CategoryEntity categoryProxy = new CategoryEntity();
 
-        when(transactionRepository.findByIdAndProfileUserId(transactionId, profileId))
-                .thenReturn(Optional.of(existingEntity));
-        when(bankAccountRepository.getReferenceById(bankAccountId)).thenReturn(bankAccountProxy);
+        when(transactionMapper.toEntity(domain)).thenReturn(entity);
+        when(profileRepository.getReferenceById(profileId)).thenReturn(profileProxy);
         when(categoryRepository.getReferenceById(categoryId)).thenReturn(categoryProxy);
-        when(transactionRepository.save(existingEntity)).thenReturn(existingEntity);
-        when(transactionMapper.toDomain(existingEntity)).thenReturn(domain);
+        when(transactionRepository.save(entity)).thenReturn(entity);
+        when(transactionMapper.toDomain(entity)).thenReturn(domain);
 
         Transaction result = adapter.update(domain);
 
         assertNotNull(result);
-        assertEquals("Updated", existingEntity.getDescription());
-        assertEquals(BigDecimal.valueOf(200), existingEntity.getAmount());
-        verify(transactionRepository).save(existingEntity);
+        verify(transactionRepository).save(entity);
+        assertEquals(profileProxy, entity.getProfile());
+        assertEquals(categoryProxy, entity.getCategory());
     }
 
     @Test
-    @DisplayName("Should throw exception when updating non-existing transaction")
-    void shouldThrowExceptionWhenUpdatingNonExistingTransaction() {
-        UUID transactionId = UUID.randomUUID();
+    @DisplayName("Should create all transactions using saveAll")
+    void shouldCreateAllTransactions() {
         UUID profileId = UUID.randomUUID();
-
-        Transaction domain = Transaction.builder()
-                .id(transactionId)
+        Transaction transaction = Transaction.builder()
                 .profileId(profileId)
+                .description("Test")
                 .build();
+        List<Transaction> transactions = List.of(transaction);
 
-        when(transactionRepository.findByIdAndProfileUserId(transactionId, profileId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> adapter.update(domain));
-        verify(transactionRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Should find transaction by id")
-    void shouldFindTransactionById() {
-        UUID id = UUID.randomUUID();
         TransactionEntity entity = new TransactionEntity();
-        Transaction domain = new Transaction();
+        ProfileEntity profileProxy = new ProfileEntity();
 
-        when(transactionRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(transactionMapper.toDomain(entity)).thenReturn(domain);
+        when(transactionMapper.toEntity(transaction)).thenReturn(entity);
+        when(profileRepository.getReferenceById(profileId)).thenReturn(profileProxy);
+        when(transactionRepository.saveAll(anyList())).thenReturn(List.of(entity));
+        when(transactionMapper.toDomainList(anyList())).thenReturn(transactions);
 
-        Optional<Transaction> result = adapter.findById(id);
+        List<Transaction> result = adapter.createAll(transactions);
 
-        assertTrue(result.isPresent());
-        assertEquals(domain, result.get());
+        assertEquals(1, result.size());
+        verify(transactionRepository).saveAll(anyList());
     }
 
     @Test
@@ -212,7 +201,7 @@ class TransactionRepositoryAdapterTest {
         UUID id = UUID.randomUUID();
         UUID profileId = UUID.randomUUID();
         TransactionEntity entity = new TransactionEntity();
-        Transaction domain = new Transaction();
+        Transaction domain = Transaction.builder().build();
 
         when(transactionRepository.findByIdAndProfileUserId(id, profileId)).thenReturn(Optional.of(entity));
         when(transactionMapper.toDomain(entity)).thenReturn(domain);
@@ -227,7 +216,7 @@ class TransactionRepositoryAdapterTest {
     void shouldFindAllTransactionsByProfileId() {
         UUID profileId = UUID.randomUUID();
         List<TransactionEntity> entities = List.of(new TransactionEntity());
-        List<Transaction> domains = List.of(new Transaction());
+        List<Transaction> domains = List.of(Transaction.builder().build());
 
         when(transactionRepository.findAllByProfileUserIdOrderByTransactionDateDesc(profileId)).thenReturn(entities);
         when(transactionMapper.toDomainList(entities)).thenReturn(domains);
@@ -241,9 +230,7 @@ class TransactionRepositoryAdapterTest {
     @DisplayName("Should delete transaction by id")
     void shouldDeleteTransactionById() {
         UUID id = UUID.randomUUID();
-
         adapter.delete(id);
-
         verify(transactionRepository).deleteById(id);
     }
 
@@ -263,7 +250,7 @@ class TransactionRepositoryAdapterTest {
     void shouldFindByPurchaseGroupUuid() {
         UUID purchaseGroupUuid = UUID.randomUUID();
         List<TransactionEntity> entities = List.of(new TransactionEntity());
-        List<Transaction> domains = List.of(new Transaction());
+        List<Transaction> domains = List.of(Transaction.builder().build());
 
         when(transactionRepository.findByPurchaseGroupUuid(purchaseGroupUuid)).thenReturn(entities);
         when(transactionMapper.toDomainList(entities)).thenReturn(domains);
@@ -278,7 +265,7 @@ class TransactionRepositoryAdapterTest {
     void shouldFindByInvoiceId() {
         UUID invoiceId = UUID.randomUUID();
         List<TransactionEntity> entities = List.of(new TransactionEntity());
-        List<Transaction> domains = List.of(new Transaction());
+        List<Transaction> domains = List.of(Transaction.builder().build());
 
         when(transactionRepository.findByInvoiceId(invoiceId)).thenReturn(entities);
         when(transactionMapper.toDomainList(entities)).thenReturn(domains);
@@ -293,7 +280,7 @@ class TransactionRepositoryAdapterTest {
     void shouldFindByBankAccountId() {
         UUID bankAccountId = UUID.randomUUID();
         List<TransactionEntity> entities = List.of(new TransactionEntity());
-        List<Transaction> domains = List.of(new Transaction());
+        List<Transaction> domains = List.of(Transaction.builder().build());
 
         when(transactionRepository.findByBankAccountId(bankAccountId)).thenReturn(entities);
         when(transactionMapper.toDomainList(entities)).thenReturn(domains);
@@ -334,9 +321,7 @@ class TransactionRepositoryAdapterTest {
     @DisplayName("Should delete by purchase group uuid")
     void shouldDeleteByPurchaseGroupUuid() {
         UUID purchaseGroupUuid = UUID.randomUUID();
-
         adapter.deleteByPurchaseGroupUuid(purchaseGroupUuid);
-
         verify(transactionRepository).deleteByPurchaseGroupUuid(purchaseGroupUuid);
     }
 
@@ -344,33 +329,34 @@ class TransactionRepositoryAdapterTest {
     @DisplayName("Should delete by invoice id")
     void shouldDeleteByInvoiceId() {
         UUID invoiceId = UUID.randomUUID();
-
         adapter.deleteByInvoiceId(invoiceId);
-
         verify(transactionRepository).deleteByInvoiceId(invoiceId);
     }
 
     @Test
-    @DisplayName("Should create all transactions")
-    void shouldCreateAllTransactions() {
+    @DisplayName("Should search transactions with filters")
+    void shouldSearchTransactions() {
         UUID profileId = UUID.randomUUID();
-        Transaction transaction = Transaction.builder()
-                .profileId(profileId)
-                .description("Test")
+        TransactionFilter filter = TransactionFilter.builder()
+                .page(0)
+                .size(10)
+                .sortDirection("DESC")
+                .sortBy("transactionDate")
                 .build();
-        List<Transaction> transactions = List.of(transaction);
 
         TransactionEntity entity = new TransactionEntity();
-        ProfileEntity profileProxy = new ProfileEntity();
+        Page<TransactionEntity> page = new PageImpl<>(List.of(entity));
+        List<Transaction> domains = List.of(Transaction.builder().build());
 
-        when(transactionMapper.toEntity(transaction)).thenReturn(entity);
-        when(profileRepository.getReferenceById(profileId)).thenReturn(profileProxy);
-        when(transactionRepository.save(entity)).thenReturn(entity);
-        when(transactionMapper.toDomain(entity)).thenReturn(transaction);
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(page);
+        when(transactionMapper.toDomainList(anyList())).thenReturn(domains);
 
-        List<Transaction> result = adapter.createAll(transactions);
+        PageDomain<Transaction> result = adapter.search(profileId, filter);
 
-        assertEquals(1, result.size());
-        verify(transactionRepository, times(1)).save(entity);
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        assertEquals(1, result.getTotalElements());
+        verify(transactionRepository).findAll(any(Specification.class), any(Pageable.class));
     }
 }
