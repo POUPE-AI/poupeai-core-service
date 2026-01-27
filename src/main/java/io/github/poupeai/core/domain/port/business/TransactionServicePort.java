@@ -5,7 +5,6 @@ import io.github.poupeai.core.domain.model.Transaction;
 import io.github.poupeai.core.domain.model.TransactionFilter;
 
 import java.io.InputStream;
-import java.util.List;
 import java.util.UUID;
 
 public interface TransactionServicePort {
@@ -14,8 +13,6 @@ public interface TransactionServicePort {
     Transaction update(Transaction transaction, UUID profileId);
 
     Transaction findByIdAndProfileId(UUID id, UUID profileId);
-
-    List<Transaction> findAllByProfileId(UUID profileId);
 
     void delete(UUID id, UUID profileId);
 

@@ -15,8 +15,6 @@ public interface TransactionRepositoryPort {
     
     Transaction update(Transaction transaction);
     
-    Optional<Transaction> findById(UUID id);
-    
     Optional<Transaction> findByIdAndProfileId(UUID id, UUID profileId);
     
     List<Transaction> findAllByProfileId(UUID profileId);
