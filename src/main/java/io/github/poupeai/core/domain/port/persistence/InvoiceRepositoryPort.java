@@ -1,7 +1,9 @@
 package io.github.poupeai.core.domain.port.persistence;
 
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceNotificationData;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,4 +26,12 @@ public interface InvoiceRepositoryPort {
     void delete(UUID id);
     
     boolean existsByCreditCardIdAndMonthAndYear(UUID creditCardId, Integer month, Integer year);
+    
+    List<Invoice> findDueSoonNotNotified(LocalDate startDate, LocalDate endDate);
+    
+    List<Invoice> findOverdueNotNotified(LocalDate today);
+    
+    List<InvoiceNotificationData> findDueSoonNotificationsData(LocalDate startDate, LocalDate endDate);
+    
+    List<InvoiceNotificationData> findOverdueNotificationsData(LocalDate today);
 }

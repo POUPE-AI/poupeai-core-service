@@ -2,6 +2,7 @@ package io.github.poupeai.core.persistence.adapter;
 
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceNotificationData;
 import io.github.poupeai.core.domain.port.persistence.InvoiceRepositoryPort;
 import io.github.poupeai.core.persistence.mapper.InvoiceEntityMapper;
 import io.github.poupeai.core.persistence.repository.CreditCardRepository;
@@ -9,6 +10,7 @@ import io.github.poupeai.core.persistence.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -84,5 +86,27 @@ public class InvoiceRepositoryAdapter implements InvoiceRepositoryPort {
     @Override
     public boolean existsByCreditCardIdAndMonthAndYear(UUID creditCardId, Integer month, Integer year) {
         return invoiceRepository.existsByCreditCardIdAndMonthAndYear(creditCardId, month, year);
+    }
+
+    @Override
+    public List<Invoice> findDueSoonNotNotified(LocalDate startDate, LocalDate endDate) {
+        var entities = invoiceRepository.findDueSoonNotNotified(startDate, endDate);
+        return invoiceMapper.toDomainList(entities);
+    }
+
+    @Override
+    public List<Invoice> findOverdueNotNotified(LocalDate today) {
+        var entities = invoiceRepository.findOverdueNotNotified(today);
+        return invoiceMapper.toDomainList(entities);
+    }
+
+    @Override
+    public List<InvoiceNotificationData> findDueSoonNotificationsData(LocalDate startDate, LocalDate endDate) {
+        return invoiceRepository.findDueSoonNotificationsData(startDate, endDate);
+    }
+
+    @Override
+    public List<InvoiceNotificationData> findOverdueNotificationsData(LocalDate today) {
+        return invoiceRepository.findOverdueNotificationsData(today);
     }
 }
