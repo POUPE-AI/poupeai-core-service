@@ -1,5 +1,6 @@
 package io.github.poupeai.core.persistence.adapter;
 
+import io.github.poupeai.core.persistence.messaging.RabbitMQPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,23 +20,21 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class IngestionJobProducerAdapterTest {
+class RabbitMQPublisherTest {
 
     @Mock
     private RabbitTemplate rabbitTemplate;
 
     @InjectMocks
-    private IngestionJobProducerAdapter adapter;
+    private RabbitMQPublisher publisher;
 
     @Test
     @DisplayName("Should publish message with correlation id from MDC")
     void shouldPublishWithCorrelationIdFromMdc() {
-        ReflectionTestUtils.setField(adapter, "exchange", "test-exchange");
-
         ArgumentCaptor<MessagePostProcessor> postProcessorCaptor = ArgumentCaptor.forClass(MessagePostProcessor.class);
         MDC.put("traceId", "trace-123");
         try {
-            adapter.publish("payload", "rk");
+            publisher.publish("test-exchange", "rk", "payload");
         } finally {
         }
 
@@ -58,10 +57,8 @@ class IngestionJobProducerAdapterTest {
     @Test
     @DisplayName("Should publish message with generated correlation id when MDC is empty")
     void shouldPublishWithGeneratedCorrelationIdWhenMdcEmpty() {
-        ReflectionTestUtils.setField(adapter, "exchange", "test-exchange");
-
         MDC.remove("traceId");
-        adapter.publish("payload", "rk");
+        publisher.publish("test-exchange", "rk", "payload");
 
         ArgumentCaptor<MessagePostProcessor> postProcessorCaptor = ArgumentCaptor.forClass(MessagePostProcessor.class);
         verify(rabbitTemplate).convertAndSend(eq("test-exchange"), eq("rk"), eq("payload"), postProcessorCaptor.capture());
@@ -79,11 +76,42 @@ class IngestionJobProducerAdapterTest {
     @Test
     @DisplayName("Should throw RuntimeException when publishing fails")
     void shouldThrowRuntimeExceptionWhenPublishingFails() {
-        ReflectionTestUtils.setField(adapter, "exchange", "test-exchange");
-
         doThrow(new RuntimeException("broker down"))
                 .when(rabbitTemplate)
                 .convertAndSend(eq("test-exchange"), eq("rk"), eq("payload"), any(MessagePostProcessor.class));
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> publisher.publish("test-exchange", "rk", "payload"));
+        assertEquals("Falha ao publicar mensagem", ex.getMessage());
+    }
+}
+
+@ExtendWith(MockitoExtension.class)
+class IngestionJobProducerAdapterTest {
+
+    @Mock
+    private RabbitMQPublisher rabbitMQPublisher;
+
+    @InjectMocks
+    private IngestionJobProducerAdapter adapter;
+
+    @Test
+    @DisplayName("Should publish message delegating to RabbitMQPublisher")
+    void shouldPublishDelegatingToPublisher() {
+        ReflectionTestUtils.setField(adapter, "exchange", "test-exchange");
+
+        adapter.publish("payload", "rk");
+
+        verify(rabbitMQPublisher).publish("test-exchange", "rk", "payload");
+    }
+
+    @Test
+    @DisplayName("Should propagate exception when publisher fails")
+    void shouldPropagateExceptionWhenPublisherFails() {
+        ReflectionTestUtils.setField(adapter, "exchange", "test-exchange");
+
+        doThrow(new RuntimeException("Falha ao publicar mensagem"))
+                .when(rabbitMQPublisher)
+                .publish("test-exchange", "rk", "payload");
 
         RuntimeException ex = assertThrows(RuntimeException.class, () -> adapter.publish("payload", "rk"));
         assertEquals("Falha ao publicar mensagem", ex.getMessage());
