@@ -29,6 +29,7 @@ public class TransactionResponse {
 
     private UUID invoiceId;
     private String attachmentKey;
+    private String attachmentUrl;
 
     private Boolean isInstallment;
     private Integer installmentNumber;
