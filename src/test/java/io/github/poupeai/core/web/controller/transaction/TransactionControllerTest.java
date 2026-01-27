@@ -6,9 +6,9 @@ import io.github.poupeai.core.domain.model.TransactionFilter;
 import io.github.poupeai.core.domain.model.TransactionType;
 import io.github.poupeai.core.domain.port.business.TransactionServicePort;
 import io.github.poupeai.core.web.dto.common.PageResponse;
-import io.github.poupeai.core.web.dto.transaction.TransactionRequest;
+import io.github.poupeai.core.web.dto.transaction.CreateTransactionRequest;
 import io.github.poupeai.core.web.dto.transaction.TransactionResponse;
-import io.github.poupeai.core.web.dto.transaction.TransactionUpdateRequest;
+import io.github.poupeai.core.web.dto.transaction.UpdateTransactionRequest;
 import io.github.poupeai.core.web.mapper.transaction.TransactionControllerMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,7 +67,7 @@ class TransactionControllerTest {
         when(transactionServicePort.search(eq(userId), any(TransactionFilter.class))).thenReturn(pageDomain);
         when(transactionMapper.toResponseList(anyList())).thenReturn(List.of(responseDto));
 
-        ResponseEntity<PageResponse<TransactionResponse>> result = transactionController.getTransactions(
+        ResponseEntity<PageResponse<TransactionResponse>> result = transactionController.list(
                 userId.toString(), 0, 10, TransactionType.EXPENSE, null, null, "ASC", "name"
         );
 
@@ -89,7 +89,7 @@ class TransactionControllerTest {
         when(transactionServicePort.findByIdAndProfileId(transactionId, userId)).thenReturn(transaction);
         when(transactionMapper.toResponse(transaction)).thenReturn(response);
 
-        ResponseEntity<TransactionResponse> result = transactionController.getTransactionById(userId.toString(), transactionId);
+        ResponseEntity<TransactionResponse> result = transactionController.getById(userId.toString(), transactionId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(transactionId, result.getBody().getId());
@@ -99,14 +99,14 @@ class TransactionControllerTest {
     @DisplayName("Should create transaction successfully")
     void shouldCreateTransactionSuccessfully() {
         UUID userId = UUID.randomUUID();
-        TransactionRequest request = TransactionRequest.builder().description("Test").build();
+        CreateTransactionRequest request = CreateTransactionRequest.builder().description("Test").build();
         Transaction transaction = Transaction.builder().description("Test").build();
 
         when(transactionMapper.toDomain(eq(request), eq(userId))).thenReturn(transaction);
         when(transactionServicePort.create(transaction)).thenReturn(transaction);
         when(transactionMapper.toResponse(transaction)).thenReturn(TransactionResponse.builder().description("Test").build());
 
-        ResponseEntity<TransactionResponse> result = transactionController.createTransaction(userId.toString(), request);
+        ResponseEntity<TransactionResponse> result = transactionController.create(userId.toString(), request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         verify(transactionServicePort).create(transaction);
@@ -117,17 +117,21 @@ class TransactionControllerTest {
     void shouldUpdateTransactionSuccessfully() {
         UUID userId = UUID.randomUUID();
         UUID transactionId = UUID.randomUUID();
-        TransactionUpdateRequest request = new TransactionUpdateRequest();
-        Transaction transaction = new Transaction();
+        UpdateTransactionRequest request = new UpdateTransactionRequest();
 
-        when(transactionServicePort.findByIdAndProfileId(transactionId, userId)).thenReturn(transaction);
-        when(transactionServicePort.update(transaction, userId)).thenReturn(transaction);
-        when(transactionMapper.toResponse(transaction)).thenReturn(new TransactionResponse());
+        Transaction partialTransaction = Transaction.builder().id(transactionId).build();
+        Transaction updatedTransaction = Transaction.builder().id(transactionId).description("Updated").build();
 
-        ResponseEntity<TransactionResponse> result = transactionController.updateTransaction(userId.toString(), transactionId, request);
+        when(transactionMapper.toDomain(request, transactionId)).thenReturn(partialTransaction);
+        when(transactionServicePort.update(partialTransaction, userId)).thenReturn(updatedTransaction);
+        when(transactionMapper.toResponse(updatedTransaction)).thenReturn(new TransactionResponse());
+
+        ResponseEntity<TransactionResponse> result = transactionController.update(userId.toString(), transactionId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(transactionMapper).updateDomainFromDto(request, transaction);
+
+        verify(transactionMapper).toDomain(request, transactionId);
+        verify(transactionServicePort).update(partialTransaction, userId);
     }
 
     @Test
@@ -136,7 +140,7 @@ class TransactionControllerTest {
         UUID userId = UUID.randomUUID();
         UUID transactionId = UUID.randomUUID();
 
-        ResponseEntity<Void> result = transactionController.deleteTransaction(userId.toString(), transactionId);
+        ResponseEntity<Void> result = transactionController.delete(userId.toString(), transactionId);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
         verify(transactionServicePort).delete(transactionId, userId);
@@ -149,7 +153,7 @@ class TransactionControllerTest {
         UUID transactionId = UUID.randomUUID();
         MultipartFile file = mock(MultipartFile.class);
         InputStream inputStream = mock(InputStream.class);
-        Transaction transaction = new Transaction();
+        Transaction transaction = Transaction.builder().build();
 
         when(file.getInputStream()).thenReturn(inputStream);
         when(file.getContentType()).thenReturn("image/png");
@@ -169,7 +173,7 @@ class TransactionControllerTest {
     void shouldDeleteReceiptSuccessfully() {
         UUID userId = UUID.randomUUID();
         UUID transactionId = UUID.randomUUID();
-        Transaction transaction = new Transaction();
+        Transaction transaction = Transaction.builder().build();
 
         when(transactionServicePort.deleteReceipt(transactionId, userId)).thenReturn(transaction);
         when(transactionMapper.toResponse(transaction)).thenReturn(new TransactionResponse());

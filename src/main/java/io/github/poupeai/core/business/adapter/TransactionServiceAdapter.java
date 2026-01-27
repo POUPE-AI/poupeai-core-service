@@ -22,10 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
@@ -44,69 +40,66 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     @Override
     @Transactional
     public Transaction create(Transaction transaction) {
-        validateTransaction(transaction);
-
-        Category category = categoryRepositoryPort.findByIdAndProfileId(
-                transaction.getCategoryId(), transaction.getProfileId())
+        UUID categoryId = transaction.getCategory().getId();
+        Category category = categoryRepositoryPort.findByIdAndProfileId(categoryId, transaction.getProfileId())
                 .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
 
-        TransactionType derivedType = mapCategoryTypeToTransactionType(category.getType());
-        transaction.setType(derivedType);
+        Transaction enrichedTransaction = transaction.toBuilder()
+                .category(category)
+                .type(mapCategoryTypeToTransactionType(category.getType()))
+                .build();
 
-        if (transaction.getCreditCardId() != null) {
-            if (derivedType != TransactionType.EXPENSE) {
-                throw new DomainException("Transações de cartão de crédito devem ser do tipo despesa.");
-            }
-            return createCreditCardTransaction(transaction);
+        enrichedTransaction.validateCreationState();
+        validateExternalResources(enrichedTransaction);
+
+        if (enrichedTransaction.getCreditCardId() != null) {
+            return processCreditCardTransaction(enrichedTransaction);
         }
 
-        return transactionRepositoryPort.create(transaction);
-    }
-
-    private TransactionType mapCategoryTypeToTransactionType(CategoryType categoryType) {
-        return switch (categoryType) {
-            case INCOME -> TransactionType.INCOME;
-            case EXPENSE -> TransactionType.EXPENSE;
-        };
+        return transactionRepositoryPort.create(enrichedTransaction);
     }
 
     @Override
     @Transactional
-    public Transaction update(Transaction transaction, UUID profileId) {
-        Transaction existingTransaction = transactionRepositoryPort.findByIdAndProfileId(transaction.getId(), profileId)
+    public Transaction update(Transaction newData, UUID profileId) {
+        Transaction existing = transactionRepositoryPort.findByIdAndProfileId(newData.getId(), profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada."));
 
-        if (Boolean.TRUE.equals(existingTransaction.getIsInstallment())) {
-            throw new DomainException(
-                    "Não é possível editar uma transação parcelada. Delete todas as parcelas e crie novamente.");
+        if (Boolean.TRUE.equals(existing.getIsInstallment())) {
+            throw new DomainException("Não é possível editar uma transação parcelada individualmente. Delete e recrie.");
         }
 
-        validateTransactionForUpdate(transaction, existingTransaction);
+        Category finalCategory = existing.getCategory();
+        TransactionType finalType = existing.getType();
 
-        UUID categoryId = transaction.getCategoryId() != null ? transaction.getCategoryId()
-                : existingTransaction.getCategoryId();
-        Category category = categoryRepositoryPort.findByIdAndProfileId(categoryId, profileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
-        TransactionType derivedType = mapCategoryTypeToTransactionType(category.getType());
-        transaction.setType(derivedType);
-
-        UUID creditCardId = existingTransaction.getCreditCardId();
-        if (creditCardId != null && derivedType != TransactionType.EXPENSE) {
-            throw new DomainException("Transações de cartão de crédito devem ser do tipo despesa.");
+        if (newData.getCategory() != null && newData.getCategory().getId() != null) {
+            UUID newCategoryId = newData.getCategory().getId();
+            if (!newCategoryId.equals(existing.getCategory().getId())) {
+                finalCategory = categoryRepositoryPort.findByIdAndProfileId(newCategoryId, profileId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
+                finalType = mapCategoryTypeToTransactionType(finalCategory.getType());
+            }
         }
 
-        UUID oldInvoiceId = existingTransaction.getInvoiceId();
+        Transaction merged = existing.toBuilder()
+                .description(newData.getDescription() != null ? newData.getDescription() : existing.getDescription())
+                .amount(newData.getAmount() != null ? newData.getAmount() : existing.getAmount())
+                .transactionDate(newData.getTransactionDate() != null ? newData.getTransactionDate() : existing.getTransactionDate())
+                .category(finalCategory)
+                .type(finalType)
+                .attachmentKey(newData.getAttachmentKey() != null ? newData.getAttachmentKey() : existing.getAttachmentKey())
+                .originalStatementId(newData.getOriginalStatementId() != null ? newData.getOriginalStatementId() : existing.getOriginalStatementId())
+                .build();
 
-        Transaction updatedTransaction = transactionRepositoryPort.update(transaction);
+        merged.validateCreationState();
 
-        if (oldInvoiceId != null) {
-            invoiceServicePort.updateInvoiceTotals(oldInvoiceId);
-        }
-        if (transaction.getInvoiceId() != null && !transaction.getInvoiceId().equals(oldInvoiceId)) {
-            invoiceServicePort.updateInvoiceTotals(transaction.getInvoiceId());
-        }
+        UUID oldInvoiceId = existing.getInvoiceId();
+        Transaction updated = transactionRepositoryPort.update(merged);
 
-        return updatedTransaction;
+        if (oldInvoiceId != null) invoiceServicePort.updateInvoiceTotals(oldInvoiceId);
+        if (updated.getInvoiceId() != null) invoiceServicePort.updateInvoiceTotals(updated.getInvoiceId());
+
+        return updated;
     }
 
     @Override
@@ -116,177 +109,40 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     }
 
     @Override
-    public List<Transaction> findAllByProfileId(UUID profileId) {
-        return transactionRepositoryPort.findAllByProfileId(profileId);
-    }
-
-    @Override
     @Transactional
     public void delete(UUID id, UUID profileId) {
-        Transaction transaction = transactionRepositoryPort.findByIdAndProfileId(id, profileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada."));
+        Transaction transaction = findByIdAndProfileId(id, profileId);
 
-        UUID invoiceId = transaction.getInvoiceId();
+        if (transaction.getAttachmentKey() != null) {
+            storagePort.delete(transaction.getAttachmentKey());
+        }
 
         if (transaction.getAttachmentKey() != null) {
             storagePort.delete(transaction.getAttachmentKey());
         }
 
         if (Boolean.TRUE.equals(transaction.getIsInstallment()) && transaction.getPurchaseGroupUuid() != null) {
+            List<Transaction> installments = transactionRepositoryPort.findByPurchaseGroupUuid(transaction.getPurchaseGroupUuid());
             transactionRepositoryPort.deleteByPurchaseGroupUuid(transaction.getPurchaseGroupUuid());
+
+            installments.stream()
+                    .map(Transaction::getInvoiceId)
+                    .distinct()
+                    .forEach(invoiceServicePort::updateInvoiceTotals);
         } else {
             transactionRepositoryPort.delete(id);
-        }
-
-        if (invoiceId != null) {
-            invoiceServicePort.updateInvoiceTotals(invoiceId);
-        }
-    }
-
-    private Transaction createCreditCardTransaction(Transaction transaction) {
-        CreditCard creditCard = creditCardRepositoryPort.findByIdAndProfileId(
-                transaction.getCreditCardId(), transaction.getProfileId())
-                .orElseThrow(() -> new ResourceNotFoundException("Cartão de crédito não encontrado."));
-
-        if (Boolean.TRUE.equals(transaction.getIsInstallment()) &&
-                transaction.getTotalInstallments() != null &&
-                transaction.getTotalInstallments() > 1) {
-            return createInstallmentTransactions(transaction, creditCard);
-        }
-
-        Invoice invoice = invoiceServicePort.getOrCreateInvoiceForDate(creditCard, transaction.getTransactionDate());
-        transaction.setInvoiceId(invoice.getId());
-
-        Transaction savedTransaction = transactionRepositoryPort.create(transaction);
-
-        invoiceServicePort.updateInvoiceTotals(invoice.getId());
-
-        return savedTransaction;
-    }
-
-    private Transaction createInstallmentTransactions(Transaction transaction, CreditCard creditCard) {
-        int totalInstallments = transaction.getTotalInstallments();
-        BigDecimal totalAmount = transaction.getAmount();
-        BigDecimal installmentAmount = totalAmount.divide(
-                BigDecimal.valueOf(totalInstallments), 2, RoundingMode.HALF_UP);
-
-        BigDecimal remainder = totalAmount.subtract(
-                installmentAmount.multiply(BigDecimal.valueOf(totalInstallments)));
-
-        UUID purchaseGroupUuid = UUID.randomUUID();
-        LocalDate currentDate = transaction.getTransactionDate();
-        List<Transaction> installments = new ArrayList<>();
-        List<UUID> invoiceIdsToUpdate = new ArrayList<>();
-
-        for (int i = 1; i <= totalInstallments; i++) {
-            Invoice invoice = invoiceServicePort.getOrCreateInvoiceForDate(creditCard, currentDate);
-
-            BigDecimal currentInstallmentAmount = installmentAmount;
-            if (i == totalInstallments && remainder.compareTo(BigDecimal.ZERO) != 0) {
-                currentInstallmentAmount = installmentAmount.add(remainder);
-            }
-
-            Transaction installment = Transaction.builder()
-                    .profileId(transaction.getProfileId())
-                    .description(String.format("%s (%d/%d)", transaction.getDescription(), i, totalInstallments))
-                    .amount(currentInstallmentAmount)
-                    .type(transaction.getType())
-                    .transactionDate(currentDate)
-                    .bankAccountId(null)
-                    .creditCardId(transaction.getCreditCardId())
-                    .categoryId(transaction.getCategoryId())
-                    .invoiceId(invoice.getId())
-                    .attachmentKey(transaction.getAttachmentKey())
-                    .isInstallment(true)
-                    .installmentNumber(i)
-                    .totalInstallments(totalInstallments)
-                    .purchaseGroupUuid(purchaseGroupUuid)
-                    .originalStatementId(transaction.getOriginalStatementId())
-                    .originalStatementDescription(transaction.getOriginalStatementDescription())
-                    .build();
-
-            installments.add(installment);
-
-            if (!invoiceIdsToUpdate.contains(invoice.getId())) {
-                invoiceIdsToUpdate.add(invoice.getId());
-            }
-
-            currentDate = currentDate.plusMonths(1);
-        }
-
-        List<Transaction> savedInstallments = transactionRepositoryPort.createAll(installments);
-
-        for (UUID invoiceId : invoiceIdsToUpdate) {
-            invoiceServicePort.updateInvoiceTotals(invoiceId);
-        }
-
-        return savedInstallments.get(0);
-    }
-
-    private void validateTransaction(Transaction transaction) {
-        if (transaction.getAmount() == null || transaction.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new DomainException("O valor da transação deve ser maior que zero.");
-        }
-
-        if (transaction.getDescription() == null || transaction.getDescription().trim().isEmpty()) {
-            throw new DomainException("A descrição da transação é obrigatória.");
-        }
-
-        if (transaction.getTransactionDate() == null) {
-            throw new DomainException("A data da transação é obrigatória.");
-        }
-
-        if (transaction.getCategoryId() == null) {
-            throw new DomainException("A categoria é obrigatória.");
-        }
-
-        if (transaction.getBankAccountId() == null && transaction.getCreditCardId() == null) {
-            throw new DomainException("A transação deve estar associada a uma conta bancária ou cartão de crédito.");
-        }
-
-        if (transaction.getBankAccountId() != null && transaction.getCreditCardId() != null) {
-            throw new DomainException(
-                    "A transação não pode estar associada a uma conta bancária e cartão de crédito simultaneamente.");
-        }
-
-        if (transaction.getBankAccountId() != null) {
-            if (!bankAccountRepositoryPort.existsByIdAndProfileId(transaction.getBankAccountId(),
-                    transaction.getProfileId())) {
-                throw new ResourceNotFoundException("Conta bancária não encontrada.");
-            }
-        }
-
-        if (Boolean.TRUE.equals(transaction.getIsInstallment())) {
-            if (transaction.getBankAccountId() != null) {
-                throw new DomainException("Parcelamento só é permitido para transações de cartão de crédito.");
-            }
-            if (transaction.getTotalInstallments() == null || transaction.getTotalInstallments() < 2) {
-                throw new DomainException("Uma transação parcelada deve ter pelo menos 2 parcelas.");
-            }
-            if (transaction.getTotalInstallments() > 48) {
-                throw new DomainException("O número máximo de parcelas é 48.");
+            if (transaction.getInvoiceId() != null) {
+                invoiceServicePort.updateInvoiceTotals(transaction.getInvoiceId());
             }
         }
     }
 
-    private void validateTransactionForUpdate(Transaction transaction, Transaction existingTransaction) {
-        BigDecimal amount = transaction.getAmount() != null ? transaction.getAmount() : existingTransaction.getAmount();
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new DomainException("O valor da transação deve ser maior que zero.");
+    @Override
+    public PageDomain<Transaction> search(UUID profileId, TransactionFilter filter) {
+        if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
+            filter.setSortBy("transactionDate");
         }
-
-        String description = transaction.getDescription() != null ? transaction.getDescription()
-                : existingTransaction.getDescription();
-        if (description == null || description.trim().isEmpty()) {
-            throw new DomainException("A descrição da transação é obrigatória.");
-        }
-
-        if (transaction.getCategoryId() != null) {
-            if (!categoryRepositoryPort.existsByIdAndProfileId(transaction.getCategoryId(),
-                    existingTransaction.getProfileId())) {
-                throw new ResourceNotFoundException("Categoria não encontrada.");
-            }
-        }
+        return transactionRepositoryPort.search(profileId, filter);
     }
 
     @Override
@@ -294,7 +150,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     public Transaction uploadReceipt(UUID id, UUID profileId, InputStream content, String contentType, long size) {
         Set<String> allowedTypes = Set.of("image/jpeg", "image/jpg", "image/png", "application/pdf");
         if (contentType == null || !allowedTypes.contains(contentType.toLowerCase())) {
-            throw new DomainException("Tipo de arquivo não permitido. Tipos aceitos: JPG, JPEG, PNG, PDF.");
+            throw new DomainException("Tipo de arquivo inválido. Use JPG, PNG ou PDF.");
         }
 
         Transaction transaction = findByIdAndProfileId(id, profileId);
@@ -303,36 +159,63 @@ public class TransactionServiceAdapter implements TransactionServicePort {
             storagePort.delete(transaction.getAttachmentKey());
         }
 
-        String attachmentKey = UUID.randomUUID().toString();
+        String key = UUID.randomUUID().toString();
 
         Map<String, String> tags = Map.of(
                 "transactionId", id.toString(),
                 "profileId", profileId.toString());
-        storagePort.upload(attachmentKey, content, contentType, size, tags);
+        storagePort.upload(key, content, contentType, size, tags);
 
-        transaction.setAttachmentKey(attachmentKey);
-        return transactionRepositoryPort.update(transaction);
+        Transaction updated = transaction.withAttachmentKey(key);
+        return transactionRepositoryPort.update(updated);
     }
 
     @Override
     @Transactional
     public Transaction deleteReceipt(UUID id, UUID profileId) {
         Transaction transaction = findByIdAndProfileId(id, profileId);
-
         if (transaction.getAttachmentKey() == null) {
-            throw new DomainException("Esta transação não possui comprovante.");
+            throw new DomainException("Transação sem comprovante.");
         }
-
         storagePort.delete(transaction.getAttachmentKey());
-        transaction.setAttachmentKey(null);
-        return transactionRepositoryPort.update(transaction);
+
+        Transaction updated = transaction.withAttachmentKey(null);
+        return transactionRepositoryPort.update(updated);
     }
 
-    @Override
-    public PageDomain<Transaction> search(UUID profileId, TransactionFilter filter) {
-        if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
-            filter.setSortBy("description");
+    private Transaction processCreditCardTransaction(Transaction transaction) {
+        CreditCard card = creditCardRepositoryPort.findByIdAndProfileId(
+                        transaction.getCreditCardId(), transaction.getProfileId())
+                .orElseThrow(() -> new ResourceNotFoundException("Cartão de crédito não encontrado."));
+
+        List<Transaction> transactionsToSave = transaction.generateInstallments();
+
+        List<Transaction> transactionsWithInvoices = transactionsToSave.stream()
+                .map(t -> {
+                    Invoice invoice = invoiceServicePort.getOrCreateInvoiceForDate(card, t.getTransactionDate());
+                    return t.withInvoiceId(invoice.getId());
+                })
+                .toList();
+
+        List<Transaction> saved = transactionRepositoryPort.createAll(transactionsWithInvoices);
+
+        transactionsWithInvoices.stream()
+                .map(Transaction::getInvoiceId)
+                .distinct()
+                .forEach(invoiceServicePort::updateInvoiceTotals);
+
+        return saved.getFirst();
+    }
+
+    private void validateExternalResources(Transaction t) {
+        if (t.getBankAccountId() != null) {
+            if (!bankAccountRepositoryPort.existsByIdAndProfileId(t.getBankAccountId(), t.getProfileId())) {
+                throw new ResourceNotFoundException("Conta bancária não encontrada.");
+            }
         }
-        return transactionRepositoryPort.search(profileId, filter);
+    }
+
+    private TransactionType mapCategoryTypeToTransactionType(CategoryType categoryType) {
+        return categoryType == CategoryType.INCOME ? TransactionType.INCOME : TransactionType.EXPENSE;
     }
 }
