@@ -11,7 +11,7 @@ import java.util.List;
 public interface CreditCardEntityMapper {
     @Mapping(target = "profileId", source = "profile.userId")
     @Mapping(target = "institution", source = "institution")
-    @Mapping(target = "usedCreditLimit", expression = "java(java.math.BigDecimal.ZERO)")
+    @Mapping(target = "usedCreditLimit", ignore = true)
     CreditCard toDomain(CreditCardEntity entity);
 
     @Mapping(target = "profile", ignore = true)

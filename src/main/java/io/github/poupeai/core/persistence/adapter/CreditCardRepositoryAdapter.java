@@ -3,9 +3,11 @@ package io.github.poupeai.core.persistence.adapter;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
 import io.github.poupeai.core.domain.port.persistence.CreditCardRepositoryPort;
+import io.github.poupeai.core.persistence.entity.CreditCardEntity;
 import io.github.poupeai.core.persistence.mapper.CreditCardEntityMapper;
 import io.github.poupeai.core.persistence.repository.CreditCardRepository;
 import io.github.poupeai.core.persistence.repository.InstitutionRepository;
+import io.github.poupeai.core.persistence.repository.InvoiceRepository;
 import io.github.poupeai.core.persistence.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -21,6 +23,7 @@ public class CreditCardRepositoryAdapter implements CreditCardRepositoryPort {
     private final CreditCardEntityMapper creditCardMapper;
     private final ProfileRepository profileRepository;
     private final InstitutionRepository institutionRepository;
+    private final InvoiceRepository invoiceRepository;
 
     @Override
     public CreditCard create(CreditCard creditCard) {
@@ -35,7 +38,7 @@ public class CreditCardRepositoryAdapter implements CreditCardRepositoryPort {
         }
 
         var savedEntity = creditCardRepository.save(entity);
-        return creditCardMapper.toDomain(savedEntity);
+        return toDomainWithUsedLimit(savedEntity);
     }
 
     @Override
@@ -56,19 +59,21 @@ public class CreditCardRepositoryAdapter implements CreditCardRepositoryPort {
         }
 
         var savedEntity = creditCardRepository.save(existingEntity);
-        return creditCardMapper.toDomain(savedEntity);
+        return toDomainWithUsedLimit(savedEntity);
     }
 
     @Override
     public Optional<CreditCard> findByIdAndProfileId(UUID id, UUID profileId) {
         return creditCardRepository.findByIdAndProfileUserId(id, profileId)
-                .map(creditCardMapper::toDomain);
+                .map(this::toDomainWithUsedLimit);
     }
 
     @Override
     public List<CreditCard> findAllByProfileId(UUID profileId) {
         var entities = creditCardRepository.findAllByProfileUserId(profileId);
-        return creditCardMapper.toDomainList(entities);
+        return entities.stream()
+                .map(this::toDomainWithUsedLimit)
+                .toList();
     }
 
     @Override
@@ -87,5 +92,12 @@ public class CreditCardRepositoryAdapter implements CreditCardRepositoryPort {
             return creditCardRepository.existsByNameAndProfileUserId(name, profileId);
         }
         return creditCardRepository.existsByNameAndProfileUserIdAndIdNot(name, profileId, excludeId);
+    }
+
+    private CreditCard toDomainWithUsedLimit(CreditCardEntity entity) {
+        var creditCard = creditCardMapper.toDomain(entity);
+        var usedLimit = invoiceRepository.calculateUsedCreditLimit(entity.getId());
+        creditCard.setUsedCreditLimit(usedLimit);
+        return creditCard;
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +24,15 @@ public interface InvoiceRepository extends JpaRepository<InvoiceEntity, UUID> {
     Optional<InvoiceEntity> findByIdAndCreditCardProfileUserId(UUID id, UUID profileId);
     
     boolean existsByCreditCardIdAndMonthAndYear(UUID creditCardId, Integer month, Integer year);
-    
+
+    @Query("""
+        SELECT COALESCE(SUM(i.totalAmount - i.paidAmount), 0)
+        FROM InvoiceEntity i
+        WHERE i.creditCard.id = :creditCardId
+        AND i.status IN ('OPEN', 'CLOSED', 'OVERDUE')
+        """)
+    BigDecimal calculateUsedCreditLimit(@Param("creditCardId") UUID creditCardId);
+
     @Query("""
         SELECT i FROM InvoiceEntity i
         JOIN FETCH i.creditCard cc
