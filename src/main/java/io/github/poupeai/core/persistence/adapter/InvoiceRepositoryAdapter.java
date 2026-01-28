@@ -25,10 +25,10 @@ public class InvoiceRepositoryAdapter implements InvoiceRepositoryPort {
     @Override
     public Invoice create(Invoice invoice) {
         var entity = invoiceMapper.toEntity(invoice);
-        
+
         var creditCard = creditCardRepository.getReferenceById(invoice.getCreditCardId());
         entity.setCreditCard(creditCard);
-        
+
         var savedEntity = invoiceRepository.save(entity);
         return invoiceMapper.toDomain(savedEntity);
     }
@@ -37,13 +37,13 @@ public class InvoiceRepositoryAdapter implements InvoiceRepositoryPort {
     public Invoice update(Invoice invoice) {
         var existingEntity = invoiceRepository.findById(invoice.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Fatura não encontrada."));
-        
+
         existingEntity.setTotalAmount(invoice.getTotalAmount());
         existingEntity.setPaidAmount(invoice.getPaidAmount());
         existingEntity.setStatus(invoice.getStatus());
         existingEntity.setDueSoonNotificationSent(invoice.getDueSoonNotificationSent());
         existingEntity.setOverdueNotificationSent(invoice.getOverdueNotificationSent());
-        
+
         var savedEntity = invoiceRepository.save(existingEntity);
         return invoiceMapper.toDomain(savedEntity);
     }
@@ -108,5 +108,11 @@ public class InvoiceRepositoryAdapter implements InvoiceRepositoryPort {
     @Override
     public List<InvoiceNotificationData> findOverdueNotificationsData(LocalDate today) {
         return invoiceRepository.findOverdueNotificationsData(today);
+    }
+
+    @Override
+    public List<Invoice> findByProfileIdAndMonthAndYear(UUID profileId, Integer month, Integer year) {
+        var entities = invoiceRepository.findByProfileIdAndMonthAndYear(profileId, month, year);
+        return invoiceMapper.toDomainList(entities);
     }
 }

@@ -15,70 +15,79 @@ import java.util.UUID;
 @Repository
 public interface InvoiceRepository extends JpaRepository<InvoiceEntity, UUID> {
     Optional<InvoiceEntity> findByCreditCardIdAndMonthAndYear(UUID creditCardId, Integer month, Integer year);
-    
+
     List<InvoiceEntity> findByCreditCardId(UUID creditCardId);
-    
+
     List<InvoiceEntity> findByCreditCardProfileUserId(UUID profileId);
-    
+
     Optional<InvoiceEntity> findByIdAndCreditCardProfileUserId(UUID id, UUID profileId);
-    
+
     boolean existsByCreditCardIdAndMonthAndYear(UUID creditCardId, Integer month, Integer year);
-    
+
     @Query("""
-        SELECT i FROM InvoiceEntity i
-        JOIN FETCH i.creditCard cc
-        JOIN FETCH cc.profile p
-        WHERE i.dueDate BETWEEN :startDate AND :endDate
-        AND (i.status = 'OPEN' OR i.status = 'CLOSED')
-        AND COALESCE(i.dueSoonNotificationSent, false) = false
-        """)
+            SELECT i FROM InvoiceEntity i
+            JOIN FETCH i.creditCard cc
+            JOIN FETCH cc.profile p
+            WHERE i.dueDate BETWEEN :startDate AND :endDate
+            AND (i.status = 'OPEN' OR i.status = 'CLOSED')
+            AND COALESCE(i.dueSoonNotificationSent, false) = false
+            """)
     List<InvoiceEntity> findDueSoonNotNotified(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
-    
+
     @Query("""
-        SELECT i FROM InvoiceEntity i
-        JOIN FETCH i.creditCard cc
-        JOIN FETCH cc.profile p
-        WHERE i.dueDate < :today
-        AND (i.status = 'OPEN' OR i.status = 'CLOSED')
-        AND COALESCE(i.overdueNotificationSent, false) = false
-        AND i.paidAmount < i.totalAmount
-        """)
+            SELECT i FROM InvoiceEntity i
+            JOIN FETCH i.creditCard cc
+            JOIN FETCH cc.profile p
+            WHERE i.dueDate < :today
+            AND (i.status = 'OPEN' OR i.status = 'CLOSED')
+            AND COALESCE(i.overdueNotificationSent, false) = false
+            AND i.paidAmount < i.totalAmount
+            """)
     List<InvoiceEntity> findOverdueNotNotified(
             @Param("today") LocalDate today);
-    
+
     @Query("""
-        SELECT new io.github.poupeai.core.domain.model.InvoiceNotificationData(
-            i.id, cc.id, cc.name, i.month, i.year, i.dueDate, i.totalAmount, i.paidAmount,
-            p.userId, p.email, CONCAT(p.firstName, ' ', p.lastName)
-        )
-        FROM InvoiceEntity i
-        JOIN i.creditCard cc
-        JOIN cc.profile p
-        WHERE i.dueDate BETWEEN :startDate AND :endDate
-        AND (i.status = 'OPEN' OR i.status = 'CLOSED')
-        AND COALESCE(i.dueSoonNotificationSent, false) = false
-        AND p.isDeactivated = false
-        """)
+            SELECT new io.github.poupeai.core.domain.model.InvoiceNotificationData(
+                i.id, cc.id, cc.name, i.month, i.year, i.dueDate, i.totalAmount, i.paidAmount,
+                p.userId, p.email, CONCAT(p.firstName, ' ', p.lastName)
+            )
+            FROM InvoiceEntity i
+            JOIN i.creditCard cc
+            JOIN cc.profile p
+            WHERE i.dueDate BETWEEN :startDate AND :endDate
+            AND (i.status = 'OPEN' OR i.status = 'CLOSED')
+            AND COALESCE(i.dueSoonNotificationSent, false) = false
+            AND p.isDeactivated = false
+            """)
     List<InvoiceNotificationData> findDueSoonNotificationsData(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
-    
+
     @Query("""
-        SELECT new io.github.poupeai.core.domain.model.InvoiceNotificationData(
-            i.id, cc.id, cc.name, i.month, i.year, i.dueDate, i.totalAmount, i.paidAmount,
-            p.userId, p.email, CONCAT(p.firstName, ' ', p.lastName)
-        )
-        FROM InvoiceEntity i
-        JOIN i.creditCard cc
-        JOIN cc.profile p
-        WHERE i.dueDate < :today
-        AND (i.status = 'OPEN' OR i.status = 'CLOSED')
-        AND COALESCE(i.overdueNotificationSent, false) = false
-        AND i.paidAmount < i.totalAmount
-        AND p.isDeactivated = false
-        """)
+            SELECT new io.github.poupeai.core.domain.model.InvoiceNotificationData(
+                i.id, cc.id, cc.name, i.month, i.year, i.dueDate, i.totalAmount, i.paidAmount,
+                p.userId, p.email, CONCAT(p.firstName, ' ', p.lastName)
+            )
+            FROM InvoiceEntity i
+            JOIN i.creditCard cc
+            JOIN cc.profile p
+            WHERE i.dueDate < :today
+            AND (i.status = 'OPEN' OR i.status = 'CLOSED')
+            AND COALESCE(i.overdueNotificationSent, false) = false
+            AND i.paidAmount < i.totalAmount
+            AND p.isDeactivated = false
+            """)
     List<InvoiceNotificationData> findOverdueNotificationsData(
             @Param("today") LocalDate today);
+
+    @Query("SELECT i FROM InvoiceEntity i " +
+            "JOIN i.creditCard cc " +
+            "WHERE cc.profile.userId = :profileId " +
+            "AND i.month = :month AND i.year = :year")
+    List<InvoiceEntity> findByProfileIdAndMonthAndYear(
+            @Param("profileId") UUID profileId,
+            @Param("month") Integer month,
+            @Param("year") Integer year);
 }
