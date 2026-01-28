@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -122,8 +123,7 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
     public PageDomain<Transaction> search(UUID profileId, TransactionFilter filter) {
         Sort sort = Sort.by(
                 Sort.Direction.fromString(filter.getSortDirection()),
-                filter.getSortBy()
-        );
+                filter.getSortBy());
         PageRequest pageable = PageRequest.of(filter.getPage(), filter.getSize(), sort);
 
         Specification<TransactionEntity> spec = (root, query, cb) -> {
@@ -170,5 +170,23 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
         if (domain.getInvoiceId() != null) {
             entity.setInvoice(invoiceRepository.getReferenceById(domain.getInvoiceId()));
         }
+    }
+
+    @Override
+    public BigDecimal sumAmountByProfileIdAndTypeAndDateRange(UUID profileId, TransactionType type, LocalDate startDate,
+            LocalDate endDate) {
+        return repository.sumAmountByProfileIdAndTypeAndDateRange(profileId, type, startDate, endDate);
+    }
+
+    @Override
+    public BigDecimal sumAmountByProfileIdAndTypeBeforeDate(UUID profileId, TransactionType type, LocalDate date) {
+        return repository.sumAmountByProfileIdAndTypeBeforeDate(profileId, type, date);
+    }
+
+    @Override
+    public List<Transaction> findByProfileIdAndBankAccountNotNullAndDateRange(UUID profileId, LocalDate startDate,
+            LocalDate endDate) {
+        return mapper.toDomainList(
+                repository.findByProfileIdAndBankAccountNotNullAndDateRange(profileId, startDate, endDate));
     }
 }
