@@ -28,4 +28,21 @@ public class Invoice {
     private Boolean overdueNotificationSent;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
+
+    public void updateStatusFromDates(LocalDate referenceDate) {
+        if (paidAmount != null && totalAmount != null && paidAmount.compareTo(totalAmount) >= 0 && totalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            this.status = InvoiceStatus.PAID;
+            return;
+        }
+
+        if (paidAmount != null && paidAmount.compareTo(BigDecimal.ZERO) > 0 && paidAmount.compareTo(totalAmount) < 0) {
+            this.status = InvoiceStatus.PARTIALLY_PAID;
+        } else if (referenceDate.isAfter(dueDate)) {
+            this.status = InvoiceStatus.OVERDUE;
+        } else if (referenceDate.isAfter(closingDate)) {
+            this.status = InvoiceStatus.CLOSED;
+        } else {
+            this.status = InvoiceStatus.OPEN;
+        }
+    }
 }
