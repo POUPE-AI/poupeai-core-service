@@ -16,7 +16,7 @@ import java.util.UUID;
 public class BankAccount {
     private UUID id;
     private UUID profileId;
-    private Long institutionId;
+    private Institution institution;
     private String name;
     private String description;
     private BigDecimal initialBalance;

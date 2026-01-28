@@ -24,7 +24,6 @@ public class CreditCardServiceAdapter implements CreditCardServicePort {
     @Transactional
     public CreditCard create(CreditCard creditCard) {
         validateCreditCard(creditCard);
-
         return creditCardRepositoryPort.create(creditCard);
     }
 
@@ -32,7 +31,6 @@ public class CreditCardServiceAdapter implements CreditCardServicePort {
     @Transactional
     public CreditCard update(CreditCard creditCard, UUID profileId) {
         validateCreditCard(creditCard);
-
         return creditCardRepositoryPort.update(creditCard);
     }
 
@@ -57,8 +55,10 @@ public class CreditCardServiceAdapter implements CreditCardServicePort {
     }
 
     private void validateCreditCard(CreditCard creditCard) {
-        if (creditCard.getInstitutionId() != null && !institutionRepositoryPort.existsById(creditCard.getInstitutionId())) {
-            throw new ResourceNotFoundException("Instituição financeira não encontrada.");
+        if (creditCard.getInstitution() != null && creditCard.getInstitution().getId() != null) {
+            if (!institutionRepositoryPort.existsById(creditCard.getInstitution().getId())) {
+                throw new ResourceNotFoundException("Instituição financeira não encontrada.");
+            }
         }
 
         if (creditCardRepositoryPort.isNameTaken(creditCard.getName(), creditCard.getProfileId(), creditCard.getId())) {

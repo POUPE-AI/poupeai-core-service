@@ -16,9 +16,10 @@ import java.util.UUID;
 public class CreditCard {
     private UUID id;
     private UUID profileId;
-    private Long institutionId;
+    private Institution institution;
     private String name;
     private BigDecimal creditLimit;
+    private BigDecimal usedCreditLimit;
     private Integer closingDay;
     private Integer dueDay;
     private OffsetDateTime createdAt;

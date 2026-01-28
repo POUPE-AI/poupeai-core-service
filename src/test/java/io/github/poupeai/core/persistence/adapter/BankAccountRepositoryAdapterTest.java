@@ -2,6 +2,7 @@ package io.github.poupeai.core.persistence.adapter;
 
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.BankAccount;
+import io.github.poupeai.core.domain.model.Institution;
 import io.github.poupeai.core.persistence.entity.BankAccountEntity;
 import io.github.poupeai.core.persistence.entity.InstitutionEntity;
 import io.github.poupeai.core.persistence.entity.ProfileEntity;
@@ -49,7 +50,7 @@ class BankAccountRepositoryAdapterTest {
         Long institutionId = 1L;
         BankAccount domain = BankAccount.builder()
                 .profileId(profileId)
-                .institutionId(institutionId)
+                .institution(Institution.builder().id(institutionId).build())
                 .build();
 
         BankAccountEntity entity = new BankAccountEntity();
@@ -76,7 +77,7 @@ class BankAccountRepositoryAdapterTest {
         UUID profileId = UUID.randomUUID();
         BankAccount domain = BankAccount.builder()
                 .profileId(profileId)
-                .institutionId(null)
+                .institution(null)
                 .build();
 
         BankAccountEntity entity = new BankAccountEntity();
@@ -107,7 +108,7 @@ class BankAccountRepositoryAdapterTest {
                 .name("Updated Account")
                 .description("Updated description")
                 .isDefault(true)
-                .institutionId(institutionId)
+                .institution(Institution.builder().id(institutionId).build())
                 .build();
 
         BankAccountEntity existingEntity = new BankAccountEntity();
@@ -139,7 +140,7 @@ class BankAccountRepositoryAdapterTest {
                 .id(accountId)
                 .profileId(profileId)
                 .name("Account")
-                .institutionId(null)
+                .institution(null)
                 .build();
 
         BankAccountEntity existingEntity = BankAccountEntity.builder()

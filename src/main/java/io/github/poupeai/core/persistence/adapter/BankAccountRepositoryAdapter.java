@@ -30,8 +30,8 @@ public class BankAccountRepositoryAdapter implements BankAccountRepositoryPort {
         var profile = profileRepository.getReferenceById(bankAccount.getProfileId());
         entity.setProfile(profile);
 
-        if (bankAccount.getInstitutionId() != null) {
-            var institution = institutionRepository.getReferenceById(bankAccount.getInstitutionId());
+        if (bankAccount.getInstitution() != null && bankAccount.getInstitution().getId() != null) {
+            var institution = institutionRepository.getReferenceById(bankAccount.getInstitution().getId());
             entity.setInstitution(institution);
         }
 
@@ -48,8 +48,8 @@ public class BankAccountRepositoryAdapter implements BankAccountRepositoryPort {
         existingEntity.setDescription(bankAccount.getDescription());
         existingEntity.setIsDefault(bankAccount.getIsDefault());
 
-        if (bankAccount.getInstitutionId() != null) {
-            var institution = institutionRepository.getReferenceById(bankAccount.getInstitutionId());
+        if (bankAccount.getInstitution() != null && bankAccount.getInstitution().getId() != null) {
+            var institution = institutionRepository.getReferenceById(bankAccount.getInstitution().getId());
             existingEntity.setInstitution(institution);
         } else {
             existingEntity.setInstitution(null);

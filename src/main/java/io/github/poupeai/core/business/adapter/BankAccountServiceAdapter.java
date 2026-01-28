@@ -99,8 +99,10 @@ public class BankAccountServiceAdapter implements BankAccountServicePort {
     }
 
     private void validateBankAccount(BankAccount bankAccount) {
-        if (bankAccount.getInstitutionId() != null && !institutionRepositoryPort.existsById(bankAccount.getInstitutionId())) {
-            throw new ResourceNotFoundException("Instituição financeira não encontrada.");
+        if (bankAccount.getInstitution() != null && bankAccount.getInstitution().getId() != null) {
+            if (!institutionRepositoryPort.existsById(bankAccount.getInstitution().getId())) {
+                throw new ResourceNotFoundException("Instituição financeira não encontrada.");
+            }
         }
 
         if (bankAccountRepositoryPort.isNameTaken(bankAccount.getName(), bankAccount.getProfileId(), bankAccount.getId())) {

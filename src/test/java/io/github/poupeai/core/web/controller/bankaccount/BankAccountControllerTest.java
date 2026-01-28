@@ -52,7 +52,7 @@ class BankAccountControllerTest {
         when(bankAccountMapper.toResponseList(bankAccounts)).thenReturn(responses);
         when(bankAccountServicePort.calculateCurrentBalance(accountId, userId)).thenReturn(BigDecimal.valueOf(1000));
 
-        ResponseEntity<List<BankAccountResponse>> result = bankAccountController.getBankAccounts(userId.toString());
+        ResponseEntity<List<BankAccountResponse>> result = bankAccountController.list(userId.toString());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(1, result.getBody().size());
@@ -73,7 +73,7 @@ class BankAccountControllerTest {
         when(bankAccountMapper.toResponse(account)).thenReturn(response);
         when(bankAccountServicePort.calculateCurrentBalance(accountId, userId)).thenReturn(BigDecimal.valueOf(500));
 
-        ResponseEntity<BankAccountResponse> result = bankAccountController.getBankAccountById(userId.toString(), accountId);
+        ResponseEntity<BankAccountResponse> result = bankAccountController.getById(userId.toString(), accountId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(BigDecimal.valueOf(500), result.getBody().getCurrentBalance());
@@ -98,7 +98,7 @@ class BankAccountControllerTest {
         when(bankAccountServicePort.create(account)).thenReturn(savedAccount);
         when(bankAccountMapper.toResponse(savedAccount)).thenReturn(response);
 
-        ResponseEntity<BankAccountResponse> result = bankAccountController.createBankAccount(userId, request);
+        ResponseEntity<BankAccountResponse> result = bankAccountController.create(userId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
@@ -126,7 +126,7 @@ class BankAccountControllerTest {
         when(bankAccountServicePort.update(account, userId)).thenReturn(account);
         when(bankAccountMapper.toResponse(account)).thenReturn(response);
 
-        ResponseEntity<BankAccountResponse> result = bankAccountController.updateBankAccount(userId.toString(), accountId, request);
+        ResponseEntity<BankAccountResponse> result = bankAccountController.update(userId.toString(), accountId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
@@ -139,7 +139,7 @@ class BankAccountControllerTest {
         UUID userId = UUID.randomUUID();
         UUID accountId = UUID.randomUUID();
 
-        ResponseEntity<Void> result = bankAccountController.deleteBankAccount(userId.toString(), accountId);
+        ResponseEntity<Void> result = bankAccountController.delete(userId.toString(), accountId);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
         verify(bankAccountServicePort).delete(accountId, userId);
