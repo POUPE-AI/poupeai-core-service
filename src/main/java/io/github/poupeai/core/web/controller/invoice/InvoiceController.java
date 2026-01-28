@@ -1,9 +1,13 @@
 package io.github.poupeai.core.web.controller.invoice;
 
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
 import io.github.poupeai.core.domain.model.InvoicePayment;
+import io.github.poupeai.core.domain.model.InvoiceStatus;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.InvoicePaymentServicePort;
 import io.github.poupeai.core.domain.port.business.InvoiceServicePort;
+import io.github.poupeai.core.web.dto.common.PageResponse;
 import io.github.poupeai.core.web.dto.invoice.InvoiceResponse;
 import io.github.poupeai.core.web.dto.invoicepayment.InvoicePaymentRequest;
 import io.github.poupeai.core.web.dto.invoicepayment.InvoicePaymentResponse;
@@ -24,9 +28,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -42,17 +46,39 @@ public class InvoiceController {
 
     @GetMapping
     @Operation(summary = "Listar faturas", description = "Lista todas as faturas do usuário")
-    public ResponseEntity<List<InvoiceResponse>> getInvoices(
-            @Parameter(hidden = true) @CurrentUserId String userId
-    ) {
-        UUID profileId = UUID.fromString(userId);
-        List<Invoice> invoices = invoiceServicePort.findByProfileId(profileId);
-        return ResponseEntity.ok(invoiceMapper.toResponseList(invoices));
+    public ResponseEntity<PageResponse<InvoiceResponse>> list(
+            @Parameter(hidden = true) @CurrentUserId String userIdStr,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) UUID creditCardId,
+            @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(defaultValue = "dueDate") String sortBy) {
+
+        UUID userId = UUID.fromString(userIdStr);
+        InvoiceFilter filter = InvoiceFilter.builder()
+                .page(page).size(size)
+                .creditCardId(creditCardId).status(status)
+                .month(month).year(year)
+                .sortDirection(sortDirection).sortBy(sortBy)
+                .build();
+
+        PageDomain<Invoice> pageResult = invoiceServicePort.search(userId, filter);
+
+        return ResponseEntity.ok(PageResponse.<InvoiceResponse>builder()
+                .content(invoiceMapper.toResponseList(pageResult.getContent()))
+                .page(pageResult.getPage())
+                .size(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .build());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar fatura por ID", description = "Retorna os detalhes de uma fatura específica")
-    public ResponseEntity<InvoiceResponse> getInvoiceById(
+    public ResponseEntity<InvoiceResponse> getById(
             @Parameter(hidden = true) @CurrentUserId String userId,
             @PathVariable UUID id
     ) {
@@ -63,7 +89,7 @@ public class InvoiceController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Deletar fatura", description = "Remove uma fatura")
-    public ResponseEntity<Void> deleteInvoice(
+    public ResponseEntity<Void> delete(
             @Parameter(hidden = true) @CurrentUserId String userId,
             @PathVariable UUID id
     ) {

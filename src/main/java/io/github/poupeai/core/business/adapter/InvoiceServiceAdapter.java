@@ -4,7 +4,9 @@ import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
 import io.github.poupeai.core.domain.model.InvoiceStatus;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.InvoiceServicePort;
 import io.github.poupeai.core.domain.port.persistence.InvoiceRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
@@ -174,5 +176,14 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
         transactionRepositoryPort.deleteByInvoiceId(invoiceId);
         
         invoiceRepositoryPort.delete(invoiceId);
+    }
+
+    @Override
+    public PageDomain<Invoice> search(UUID profileId, InvoiceFilter filter) {
+        if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
+            filter.setSortBy("dueDate");
+        }
+
+        return invoiceRepositoryPort.search(profileId, filter);
     }
 }
