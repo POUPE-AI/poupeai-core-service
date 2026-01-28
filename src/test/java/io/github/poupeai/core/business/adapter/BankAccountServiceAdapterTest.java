@@ -5,6 +5,7 @@ import io.github.poupeai.core.domain.exception.ForbiddenActionException;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.BankAccount;
+import io.github.poupeai.core.domain.model.Institution;
 import io.github.poupeai.core.domain.port.persistence.BankAccountRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.InstitutionRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +43,7 @@ class BankAccountServiceAdapterTest {
                 .profileId(UUID.randomUUID())
                 .name("Nubank")
                 .initialBalance(BigDecimal.valueOf(1000))
-                .institutionId(1L)
+                .institution(Institution.builder().id(1L).build())
                 .build();
 
         when(institutionRepositoryPort.existsById(1L)).thenReturn(true);
@@ -100,7 +101,7 @@ class BankAccountServiceAdapterTest {
     @DisplayName("Should throw ResourceNotFoundException when institution does not exist on create")
     void shouldThrowExceptionWhenInstitutionNotFoundOnCreate() {
         BankAccount account = BankAccount.builder()
-                .institutionId(99L)
+                .institution(Institution.builder().id(99L).build())
                 .build();
 
         when(institutionRepositoryPort.existsById(99L)).thenReturn(false);
@@ -149,7 +150,7 @@ class BankAccountServiceAdapterTest {
                 .id(id)
                 .profileId(profileId)
                 .name("Nubank Updated")
-                .institutionId(1L)
+                .institution(Institution.builder().id(1L).build())
                 .build();
 
         when(institutionRepositoryPort.existsById(1L)).thenReturn(true);

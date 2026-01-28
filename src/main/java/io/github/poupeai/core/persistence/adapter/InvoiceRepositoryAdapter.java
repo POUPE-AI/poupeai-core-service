@@ -2,15 +2,24 @@ package io.github.poupeai.core.persistence.adapter;
 
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
 import io.github.poupeai.core.domain.model.InvoiceNotificationData;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.persistence.InvoiceRepositoryPort;
+import io.github.poupeai.core.persistence.entity.InvoiceEntity;
 import io.github.poupeai.core.persistence.mapper.InvoiceEntityMapper;
 import io.github.poupeai.core.persistence.repository.CreditCardRepository;
 import io.github.poupeai.core.persistence.repository.InvoiceRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -114,5 +123,43 @@ public class InvoiceRepositoryAdapter implements InvoiceRepositoryPort {
     public List<Invoice> findByProfileIdAndMonthAndYear(UUID profileId, Integer month, Integer year) {
         var entities = invoiceRepository.findByProfileIdAndMonthAndYear(profileId, month, year);
         return invoiceMapper.toDomainList(entities);
+    }
+
+    @Override
+    public PageDomain<Invoice> search(UUID profileId, InvoiceFilter filter) {
+        Sort sort = Sort.by(
+                Sort.Direction.fromString(filter.getSortDirection()),
+                filter.getSortBy()
+        );
+        PageRequest pageable = PageRequest.of(filter.getPage(), filter.getSize(), sort);
+
+        Specification<InvoiceEntity> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("creditCard").get("profile").get("userId"), profileId));
+
+            if (filter.getCreditCardId() != null) {
+                predicates.add(cb.equal(root.get("creditCard").get("id"), filter.getCreditCardId()));
+            }
+            if (filter.getStatus() != null) {
+                predicates.add(cb.equal(root.get("status"), filter.getStatus()));
+            }
+            if (filter.getMonth() != null) {
+                predicates.add(cb.equal(root.get("month"), filter.getMonth()));
+            }
+            if (filter.getYear() != null) {
+                predicates.add(cb.equal(root.get("year"), filter.getYear()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<InvoiceEntity> page = invoiceRepository.findAll(spec, pageable);
+
+        return PageDomain.<Invoice>builder()
+                .content(invoiceMapper.toDomainList(page.getContent()))
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .build();
     }
 }

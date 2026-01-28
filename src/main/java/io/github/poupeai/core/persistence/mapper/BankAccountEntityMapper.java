@@ -10,11 +10,9 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface BankAccountEntityMapper {
     @Mapping(target = "profileId", source = "profile.userId")
-    @Mapping(target = "institutionId", source = "institution.id")
     BankAccount toDomain(BankAccountEntity entity);
 
     @Mapping(target = "profile", ignore = true)
-    @Mapping(target = "institution", ignore = true)
     BankAccountEntity toEntity(BankAccount domain);
 
     List<BankAccount> toDomainList(List<BankAccountEntity> entities);

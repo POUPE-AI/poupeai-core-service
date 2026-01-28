@@ -4,11 +4,14 @@ import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
 import io.github.poupeai.core.domain.model.InvoiceStatus;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.InvoiceServicePort;
 import io.github.poupeai.core.domain.port.persistence.InvoiceRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InvoiceServiceAdapter implements InvoiceServicePort {
     private final InvoiceRepositoryPort invoiceRepositoryPort;
     private final TransactionRepositoryPort transactionRepositoryPort;
@@ -30,25 +34,36 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
         int invoiceMonth = monthYear[0];
         int invoiceYear = monthYear[1];
 
-        return invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(
-                creditCard.getId(), invoiceMonth, invoiceYear
-        ).orElseGet(() -> createInvoice(creditCard, invoiceMonth, invoiceYear));
+        return invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCard.getId(), invoiceMonth, invoiceYear)
+                .map(invoice -> {
+                    syncInvoiceDatesIfChanged(invoice, creditCard);
+                    invoice.updateStatusFromDates(LocalDate.now());
+                    return invoiceRepositoryPort.update(invoice);
+                })
+                .orElseGet(() -> createInvoice(creditCard, invoiceMonth, invoiceYear));
     }
 
     @Override
     public Invoice findById(UUID id, UUID profileId) {
-        return invoiceRepositoryPort.findByIdAndProfileId(id, profileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Fatura não encontrada."));
+        Invoice invoice = invoiceRepositoryPort.findByIdAndProfileId(id, profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fatura não encontrada"));
+
+        invoice.updateStatusFromDates(LocalDate.now());
+        return invoice;
     }
 
     @Override
     public List<Invoice> findByCreditCardId(UUID creditCardId, UUID profileId) {
-        return invoiceRepositoryPort.findByCreditCardId(creditCardId);
+        List<Invoice> invoices = invoiceRepositoryPort.findByCreditCardId(creditCardId);
+        invoices.forEach(invoice -> invoice.updateStatusFromDates(LocalDate.now()));
+        return invoices;
     }
 
     @Override
     public List<Invoice> findByProfileId(UUID profileId) {
-        return invoiceRepositoryPort.findByProfileId(profileId);
+        List<Invoice> invoices = invoiceRepositoryPort.findByProfileId(profileId);
+        invoices.forEach(invoice -> invoice.updateStatusFromDates(LocalDate.now()));
+        return invoices;
     }
 
     @Override
@@ -59,6 +74,8 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
 
         BigDecimal totalAmount = transactionRepositoryPort.sumAmountByInvoiceId(invoiceId);
         invoice.setTotalAmount(totalAmount);
+
+        invoice.updateStatusFromDates(LocalDate.now());
 
         invoiceRepositoryPort.update(invoice);
     }
@@ -96,7 +113,30 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
                 .overdueNotificationSent(false)
                 .build();
 
+        invoice.updateStatusFromDates(LocalDate.now());
         return invoiceRepositoryPort.create(invoice);
+    }
+
+    private void syncInvoiceDatesIfChanged(Invoice invoice, CreditCard creditCard) {
+        LocalDate expectedClosingDate = calculateClosingDate(creditCard.getClosingDay(), invoice.getMonth(), invoice.getYear());
+        LocalDate expectedDueDate = calculateDueDate(creditCard.getDueDay(), expectedClosingDate);
+
+        boolean changed = false;
+
+        if (!invoice.getClosingDate().isEqual(expectedClosingDate)) {
+            invoice.setClosingDate(expectedClosingDate);
+            changed = true;
+        }
+
+        if (!invoice.getDueDate().isEqual(expectedDueDate)) {
+            invoice.setDueDate(expectedDueDate);
+            changed = true;
+        }
+
+        if (changed) {
+            log.info("Corrigindo datas da fatura {}: Fechamento {} -> {}, Vencimento {} -> {}",
+                    invoice.getId(), invoice.getClosingDate(), expectedClosingDate, invoice.getDueDate(), expectedDueDate);
+        }
     }
 
     private LocalDate calculateClosingDate(int closingDay, int month, int year) {
@@ -106,10 +146,16 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
     }
 
     private LocalDate calculateDueDate(int dueDay, LocalDate closingDate) {
-        LocalDate nextMonth = closingDate.plusMonths(1);
-        int maxDaysInMonth = nextMonth.lengthOfMonth();
+        LocalDate baseDate = closingDate;
+
+        if (dueDay <= closingDate.getDayOfMonth()) {
+            baseDate = baseDate.plusMonths(1);
+        }
+
+        int maxDaysInMonth = baseDate.lengthOfMonth();
         int actualDueDay = Math.min(dueDay, maxDaysInMonth);
-        return LocalDate.of(nextMonth.getYear(), nextMonth.getMonth(), actualDueDay);
+
+        return baseDate.withDayOfMonth(actualDueDay);
     }
 
     @Override
@@ -120,9 +166,9 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
 
         BigDecimal newPaidAmount = invoice.getPaidAmount().add(amount);
         invoice.setPaidAmount(newPaidAmount);
-        
-        updateInvoiceStatus(invoice);
-        
+
+        invoice.updateStatusFromDates(LocalDate.now());
+
         invoiceRepositoryPort.update(invoice);
     }
 
@@ -137,28 +183,10 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
             newPaidAmount = BigDecimal.ZERO;
         }
         invoice.setPaidAmount(newPaidAmount);
-        
-        updateInvoiceStatus(invoice);
-        
+
+        invoice.updateStatusFromDates(LocalDate.now());
+
         invoiceRepositoryPort.update(invoice);
-    }
-
-    private void updateInvoiceStatus(Invoice invoice) {
-        BigDecimal totalAmount = invoice.getTotalAmount();
-        BigDecimal paidAmount = invoice.getPaidAmount();
-        LocalDate today = LocalDate.now();
-
-        if (paidAmount.compareTo(totalAmount) >= 0) {
-            invoice.setStatus(InvoiceStatus.PAID);
-        } else if (paidAmount.compareTo(BigDecimal.ZERO) > 0) {
-            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
-        } else if (invoice.getDueDate().isBefore(today)) {
-            invoice.setStatus(InvoiceStatus.OVERDUE);
-        } else if (invoice.getClosingDate().isBefore(today) || invoice.getClosingDate().isEqual(today)) {
-            invoice.setStatus(InvoiceStatus.CLOSED);
-        } else {
-            invoice.setStatus(InvoiceStatus.OPEN);
-        }
     }
 
     @Override
@@ -174,5 +202,20 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
         transactionRepositoryPort.deleteByInvoiceId(invoiceId);
         
         invoiceRepositoryPort.delete(invoiceId);
+    }
+
+    @Override
+    @Transactional
+    public PageDomain<Invoice> search(UUID profileId, InvoiceFilter filter) {
+        if (filter.getSortBy() == null || filter.getSortBy().isEmpty()) {
+            filter.setSortBy("dueDate");
+        }
+
+        PageDomain<Invoice> page = invoiceRepositoryPort.search(profileId, filter);
+        page.getContent().forEach(invoice -> {
+            invoice.updateStatusFromDates(LocalDate.now());
+        });
+
+        return page;
     }
 }

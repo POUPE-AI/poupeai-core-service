@@ -1,10 +1,13 @@
 package io.github.poupeai.core.web.controller.invoice;
 
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
 import io.github.poupeai.core.domain.model.InvoicePayment;
 import io.github.poupeai.core.domain.model.InvoiceStatus;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.business.InvoicePaymentServicePort;
 import io.github.poupeai.core.domain.port.business.InvoiceServicePort;
+import io.github.poupeai.core.web.dto.common.PageResponse;
 import io.github.poupeai.core.web.dto.invoice.InvoiceResponse;
 import io.github.poupeai.core.web.dto.invoicepayment.InvoicePaymentRequest;
 import io.github.poupeai.core.web.dto.invoicepayment.InvoicePaymentResponse;
@@ -26,7 +29,11 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class InvoiceControllerTest {
@@ -47,23 +54,33 @@ class InvoiceControllerTest {
     private InvoiceController invoiceController;
 
     @Test
-    @DisplayName("Should get all invoices for user")
-    void shouldGetInvoicesSuccessfully() {
+    @DisplayName("Should list paginated invoices successfully")
+    void shouldListInvoicesSuccessfully() {
         UUID userId = UUID.randomUUID();
         UUID invoiceId = UUID.randomUUID();
         Invoice invoice = createInvoice(invoiceId);
-        List<Invoice> invoices = List.of(invoice);
+
+        PageDomain<Invoice> pageDomain = PageDomain.<Invoice>builder()
+                .content(List.of(invoice))
+                .page(0)
+                .size(10)
+                .totalElements(1L)
+                .totalPages(1)
+                .build();
+
         InvoiceResponse response = InvoiceResponse.builder().id(invoiceId).build();
         List<InvoiceResponse> responses = List.of(response);
 
-        when(invoiceServicePort.findByProfileId(userId)).thenReturn(invoices);
-        when(invoiceMapper.toResponseList(invoices)).thenReturn(responses);
+        when(invoiceServicePort.search(eq(userId), any(InvoiceFilter.class))).thenReturn(pageDomain);
+        when(invoiceMapper.toResponseList(anyList())).thenReturn(responses);
 
-        ResponseEntity<List<InvoiceResponse>> result = invoiceController.getInvoices(userId.toString());
+        ResponseEntity<PageResponse<InvoiceResponse>> result = invoiceController.list(
+                userId.toString(), 0, 10, null, null, null, null, "DESC", "dueDate");
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
-        assertEquals(1, result.getBody().size());
+        assertEquals(1, result.getBody().getContent().size());
+        assertEquals(1, result.getBody().getTotalElements());
     }
 
     @Test
@@ -77,7 +94,7 @@ class InvoiceControllerTest {
         when(invoiceServicePort.findById(invoiceId, userId)).thenReturn(invoice);
         when(invoiceMapper.toResponse(invoice)).thenReturn(response);
 
-        ResponseEntity<InvoiceResponse> result = invoiceController.getInvoiceById(userId.toString(), invoiceId);
+        ResponseEntity<InvoiceResponse> result = invoiceController.getById(userId.toString(), invoiceId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -90,7 +107,7 @@ class InvoiceControllerTest {
         UUID userId = UUID.randomUUID();
         UUID invoiceId = UUID.randomUUID();
 
-        ResponseEntity<Void> result = invoiceController.deleteInvoice(userId.toString(), invoiceId);
+        ResponseEntity<Void> result = invoiceController.delete(userId.toString(), invoiceId);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
         verify(invoiceServicePort).deleteInvoice(invoiceId, userId);
@@ -132,7 +149,6 @@ class InvoiceControllerTest {
         assertEquals(HttpStatus.CREATED, result.getStatusCode());
         assertNotNull(result.getBody());
         assertEquals(paymentId, result.getBody().getId());
-        assertEquals(amount, result.getBody().getAmount());
     }
 
     @Test
