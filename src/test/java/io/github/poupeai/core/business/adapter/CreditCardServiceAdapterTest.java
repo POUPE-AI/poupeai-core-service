@@ -4,6 +4,7 @@ import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
+import io.github.poupeai.core.domain.model.Institution;
 import io.github.poupeai.core.domain.port.persistence.CreditCardRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.InstitutionRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
@@ -40,7 +41,7 @@ class CreditCardServiceAdapterTest {
                 .name("Nubank")
                 .closingDay(5)
                 .dueDay(15)
-                .institutionId(1L)
+                .institution(Institution.builder().id(1L).build())
                 .build();
 
         when(institutionRepositoryPort.existsById(1L)).thenReturn(true);
@@ -59,7 +60,7 @@ class CreditCardServiceAdapterTest {
     @DisplayName("Should throw ResourceNotFoundException when institution does not exist on create")
     void shouldThrowExceptionWhenInstitutionNotFoundOnCreate() {
         CreditCard card = CreditCard.builder()
-                .institutionId(99L)
+                .institution(Institution.builder().id(99L).build())
                 .build();
 
         when(institutionRepositoryPort.existsById(99L)).thenReturn(false);
@@ -108,7 +109,7 @@ class CreditCardServiceAdapterTest {
                 .name("Nubank Updated")
                 .closingDay(5)
                 .dueDay(15)
-                .institutionId(1L)
+                .institution(Institution.builder().id(1L).build())
                 .build();
 
         when(institutionRepositoryPort.existsById(1L)).thenReturn(true);

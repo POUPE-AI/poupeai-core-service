@@ -2,6 +2,7 @@ package io.github.poupeai.core.persistence.adapter;
 
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
+import io.github.poupeai.core.domain.model.Institution;
 import io.github.poupeai.core.persistence.entity.CreditCardEntity;
 import io.github.poupeai.core.persistence.entity.InstitutionEntity;
 import io.github.poupeai.core.persistence.entity.ProfileEntity;
@@ -49,7 +50,7 @@ class CreditCardRepositoryAdapterTest {
         Long institutionId = 1L;
         CreditCard domain = CreditCard.builder()
                 .profileId(profileId)
-                .institutionId(institutionId)
+                .institution(Institution.builder().id(institutionId).build())
                 .build();
 
         CreditCardEntity entity = new CreditCardEntity();
@@ -81,7 +82,7 @@ class CreditCardRepositoryAdapterTest {
                 .id(cardId)
                 .profileId(profileId)
                 .name("Updated Card")
-                .institutionId(institutionId)
+                .institution(Institution.builder().id(institutionId).build())
                 .build();
 
         CreditCardEntity existingEntity = new CreditCardEntity();
