@@ -2,6 +2,8 @@ package io.github.poupeai.core.domain.port.business;
 
 import io.github.poupeai.core.domain.model.CreditCard;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
+import io.github.poupeai.core.domain.model.PageDomain;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,4 +19,5 @@ public interface InvoiceServicePort {
     void addPaymentToInvoice(UUID invoiceId, BigDecimal amount);
     void removePaymentFromInvoice(UUID invoiceId, BigDecimal amount);
     void deleteInvoice(UUID invoiceId, UUID profileId);
+    PageDomain<Invoice> search(UUID profileId, InvoiceFilter filter);
 }

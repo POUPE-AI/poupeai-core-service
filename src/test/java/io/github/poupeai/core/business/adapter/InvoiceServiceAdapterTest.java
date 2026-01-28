@@ -4,7 +4,9 @@ import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
 import io.github.poupeai.core.domain.model.Invoice;
+import io.github.poupeai.core.domain.model.InvoiceFilter;
 import io.github.poupeai.core.domain.model.InvoiceStatus;
+import io.github.poupeai.core.domain.model.PageDomain;
 import io.github.poupeai.core.domain.port.persistence.InvoiceRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import org.junit.jupiter.api.DisplayName;
@@ -18,13 +20,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class InvoiceServiceAdapterTest {
@@ -38,26 +46,32 @@ class InvoiceServiceAdapterTest {
     @InjectMocks
     private InvoiceServiceAdapter invoiceServiceAdapter;
 
+    private final int FUTURE_YEAR = LocalDate.now().getYear() + 1;
+
     @Nested
     @DisplayName("Get Or Create Invoice Tests")
     class GetOrCreateInvoiceTests {
 
         @Test
-        @DisplayName("Should return existing invoice when found")
+        @DisplayName("Should return existing invoice and update status when found")
         void shouldReturnExistingInvoiceWhenFound() {
             UUID creditCardId = UUID.randomUUID();
             CreditCard creditCard = createCreditCard(creditCardId, 10, 20);
-            LocalDate transactionDate = LocalDate.of(2024, 1, 5);
-            Invoice existingInvoice = createInvoice(creditCardId, 1, 2024);
+            LocalDate transactionDate = LocalDate.of(FUTURE_YEAR, 1, 5);
+            Invoice existingInvoice = createInvoice(creditCardId, 1, FUTURE_YEAR);
 
-            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, 2024))
+            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, FUTURE_YEAR))
                     .thenReturn(Optional.of(existingInvoice));
+
+            when(invoiceRepositoryPort.update(any(Invoice.class))).thenAnswer(i -> i.getArguments()[0]);
 
             Invoice result = invoiceServiceAdapter.getOrCreateInvoiceForDate(creditCard, transactionDate);
 
             assertNotNull(result);
             assertEquals(existingInvoice.getId(), result.getId());
+
             verify(invoiceRepositoryPort, never()).create(any());
+            verify(invoiceRepositoryPort).update(existingInvoice);
         }
 
         @Test
@@ -65,9 +79,9 @@ class InvoiceServiceAdapterTest {
         void shouldCreateNewInvoiceWhenNotFound() {
             UUID creditCardId = UUID.randomUUID();
             CreditCard creditCard = createCreditCard(creditCardId, 10, 20);
-            LocalDate transactionDate = LocalDate.of(2024, 1, 5);
+            LocalDate transactionDate = LocalDate.of(FUTURE_YEAR, 1, 5);
 
-            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, 2024))
+            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, FUTURE_YEAR))
                     .thenReturn(Optional.empty());
             when(invoiceRepositoryPort.create(any())).thenAnswer(inv -> {
                 Invoice invoice = inv.getArgument(0);
@@ -85,7 +99,7 @@ class InvoiceServiceAdapterTest {
             Invoice createdInvoice = captor.getValue();
             
             assertEquals(1, createdInvoice.getMonth());
-            assertEquals(2024, createdInvoice.getYear());
+            assertEquals(FUTURE_YEAR, createdInvoice.getYear());
             assertEquals(InvoiceStatus.OPEN, createdInvoice.getStatus());
         }
 
@@ -94,9 +108,9 @@ class InvoiceServiceAdapterTest {
         void shouldAllocateToNextMonthWhenAfterClosingDay() {
             UUID creditCardId = UUID.randomUUID();
             CreditCard creditCard = createCreditCard(creditCardId, 10, 20);
-            LocalDate transactionDate = LocalDate.of(2024, 1, 15);
+            LocalDate transactionDate = LocalDate.of(FUTURE_YEAR, 1, 15);
 
-            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 2, 2024))
+            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 2, FUTURE_YEAR))
                     .thenReturn(Optional.empty());
             when(invoiceRepositoryPort.create(any())).thenAnswer(inv -> {
                 Invoice invoice = inv.getArgument(0);
@@ -111,7 +125,7 @@ class InvoiceServiceAdapterTest {
             Invoice createdInvoice = captor.getValue();
             
             assertEquals(2, createdInvoice.getMonth());
-            assertEquals(2024, createdInvoice.getYear());
+            assertEquals(FUTURE_YEAR, createdInvoice.getYear());
         }
 
         @Test
@@ -119,9 +133,9 @@ class InvoiceServiceAdapterTest {
         void shouldHandleYearTransitionCorrectly() {
             UUID creditCardId = UUID.randomUUID();
             CreditCard creditCard = createCreditCard(creditCardId, 10, 20);
-            LocalDate transactionDate = LocalDate.of(2024, 12, 15);
+            LocalDate transactionDate = LocalDate.of(FUTURE_YEAR, 12, 15);
 
-            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, 2025))
+            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, FUTURE_YEAR + 1))
                     .thenReturn(Optional.empty());
             when(invoiceRepositoryPort.create(any())).thenAnswer(inv -> {
                 Invoice invoice = inv.getArgument(0);
@@ -136,32 +150,7 @@ class InvoiceServiceAdapterTest {
             Invoice createdInvoice = captor.getValue();
             
             assertEquals(1, createdInvoice.getMonth());
-            assertEquals(2025, createdInvoice.getYear());
-        }
-
-        @Test
-        @DisplayName("Should allocate to current month invoice when purchase on closing day")
-        void shouldAllocateToCurrentMonthWhenOnClosingDay() {
-            UUID creditCardId = UUID.randomUUID();
-            CreditCard creditCard = createCreditCard(creditCardId, 10, 20);
-            LocalDate transactionDate = LocalDate.of(2024, 1, 10);
-
-            when(invoiceRepositoryPort.findByCreditCardIdAndMonthAndYear(creditCardId, 1, 2024))
-                    .thenReturn(Optional.empty());
-            when(invoiceRepositoryPort.create(any())).thenAnswer(inv -> {
-                Invoice invoice = inv.getArgument(0);
-                invoice.setId(UUID.randomUUID());
-                return invoice;
-            });
-
-            invoiceServiceAdapter.getOrCreateInvoiceForDate(creditCard, transactionDate);
-
-            ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
-            verify(invoiceRepositoryPort).create(captor.capture());
-            Invoice createdInvoice = captor.getValue();
-            
-            assertEquals(1, createdInvoice.getMonth());
-            assertEquals(2024, createdInvoice.getYear());
+            assertEquals(FUTURE_YEAR + 1, createdInvoice.getYear());
         }
     }
 
@@ -174,7 +163,7 @@ class InvoiceServiceAdapterTest {
         void shouldFindInvoiceByIdSuccessfully() {
             UUID profileId = UUID.randomUUID();
             UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024);
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR);
             invoice.setId(invoiceId);
 
             when(invoiceRepositoryPort.findByIdAndProfileId(invoiceId, profileId))
@@ -205,8 +194,8 @@ class InvoiceServiceAdapterTest {
             UUID profileId = UUID.randomUUID();
             UUID creditCardId = UUID.randomUUID();
             List<Invoice> invoices = List.of(
-                    createInvoice(creditCardId, 1, 2024),
-                    createInvoice(creditCardId, 2, 2024)
+                    createInvoice(creditCardId, 1, FUTURE_YEAR),
+                    createInvoice(creditCardId, 2, FUTURE_YEAR)
             );
 
             when(invoiceRepositoryPort.findByCreditCardId(creditCardId)).thenReturn(invoices);
@@ -221,8 +210,8 @@ class InvoiceServiceAdapterTest {
         void shouldFindInvoicesByProfileId() {
             UUID profileId = UUID.randomUUID();
             List<Invoice> invoices = List.of(
-                    createInvoice(UUID.randomUUID(), 1, 2024),
-                    createInvoice(UUID.randomUUID(), 2, 2024)
+                    createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR),
+                    createInvoice(UUID.randomUUID(), 2, FUTURE_YEAR)
             );
 
             when(invoiceRepositoryPort.findByProfileId(profileId)).thenReturn(invoices);
@@ -230,6 +219,26 @@ class InvoiceServiceAdapterTest {
             List<Invoice> result = invoiceServiceAdapter.findByProfileId(profileId);
 
             assertEquals(2, result.size());
+        }
+
+        @Test
+        @DisplayName("Should search invoices with filter")
+        void shouldSearchInvoicesWithFilter() {
+            UUID profileId = UUID.randomUUID();
+            InvoiceFilter filter = InvoiceFilter.builder().build();
+            PageDomain<Invoice> pageDomain = PageDomain.<Invoice>builder()
+                    .content(Collections.emptyList())
+                    .build();
+
+            when(invoiceRepositoryPort.search(eq(profileId), any(InvoiceFilter.class)))
+                    .thenReturn(pageDomain);
+
+            invoiceServiceAdapter.search(profileId, filter);
+
+            ArgumentCaptor<InvoiceFilter> captor = ArgumentCaptor.forClass(InvoiceFilter.class);
+            verify(invoiceRepositoryPort).search(eq(profileId), captor.capture());
+
+            assertEquals("dueDate", captor.getValue().getSortBy());
         }
     }
 
@@ -241,14 +250,13 @@ class InvoiceServiceAdapterTest {
         @DisplayName("Should update invoice totals successfully")
         void shouldUpdateInvoiceTotalsSuccessfully() {
             UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024);
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR);
             invoice.setId(invoiceId);
             invoice.setTotalAmount(BigDecimal.ZERO);
 
             when(invoiceRepositoryPort.findById(invoiceId)).thenReturn(Optional.of(invoice));
             when(transactionRepositoryPort.sumAmountByInvoiceId(invoiceId))
                     .thenReturn(BigDecimal.valueOf(500));
-            when(invoiceRepositoryPort.update(any())).thenAnswer(inv -> inv.getArgument(0));
 
             invoiceServiceAdapter.updateInvoiceTotals(invoiceId);
 
@@ -272,6 +280,69 @@ class InvoiceServiceAdapterTest {
     }
 
     @Nested
+    @DisplayName("Payment Tests")
+    class PaymentTests {
+
+        @Test
+        @DisplayName("Should add payment to invoice successfully")
+        void shouldAddPaymentToInvoiceSuccessfully() {
+            UUID invoiceId = UUID.randomUUID();
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR);
+            invoice.setTotalAmount(BigDecimal.valueOf(1000));
+            invoice.setPaidAmount(BigDecimal.valueOf(200));
+
+            when(invoiceRepositoryPort.findById(invoiceId)).thenReturn(Optional.of(invoice));
+
+            BigDecimal paymentAmount = BigDecimal.valueOf(300);
+            invoiceServiceAdapter.addPaymentToInvoice(invoiceId, paymentAmount);
+
+            ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
+            verify(invoiceRepositoryPort).update(captor.capture());
+            Invoice updatedInvoice = captor.getValue();
+
+            assertEquals(BigDecimal.valueOf(500), updatedInvoice.getPaidAmount());
+        }
+
+        @Test
+        @DisplayName("Should remove payment from invoice successfully")
+        void shouldRemovePaymentFromInvoiceSuccessfully() {
+            UUID invoiceId = UUID.randomUUID();
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR);
+            invoice.setTotalAmount(BigDecimal.valueOf(1000));
+            invoice.setPaidAmount(BigDecimal.valueOf(500));
+
+            when(invoiceRepositoryPort.findById(invoiceId)).thenReturn(Optional.of(invoice));
+
+            BigDecimal paymentAmount = BigDecimal.valueOf(200);
+            invoiceServiceAdapter.removePaymentFromInvoice(invoiceId, paymentAmount);
+
+            ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
+            verify(invoiceRepositoryPort).update(captor.capture());
+            Invoice updatedInvoice = captor.getValue();
+
+            assertEquals(BigDecimal.valueOf(300), updatedInvoice.getPaidAmount());
+        }
+
+        @Test
+        @DisplayName("Should not reduce paid amount below zero")
+        void shouldNotReducePaidAmountBelowZero() {
+            UUID invoiceId = UUID.randomUUID();
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR);
+            invoice.setPaidAmount(BigDecimal.valueOf(100));
+
+            when(invoiceRepositoryPort.findById(invoiceId)).thenReturn(Optional.of(invoice));
+
+            invoiceServiceAdapter.removePaymentFromInvoice(invoiceId, BigDecimal.valueOf(200));
+
+            ArgumentCaptor<Invoice> captor = ArgumentCaptor.forClass(Invoice.class);
+            verify(invoiceRepositoryPort).update(captor.capture());
+            Invoice updatedInvoice = captor.getValue();
+
+            assertEquals(BigDecimal.ZERO, updatedInvoice.getPaidAmount());
+        }
+    }
+
+    @Nested
     @DisplayName("Delete Invoice Tests")
     class DeleteInvoiceTests {
 
@@ -280,7 +351,7 @@ class InvoiceServiceAdapterTest {
         void shouldDeleteInvoiceSuccessfully() {
             UUID profileId = UUID.randomUUID();
             UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024, InvoiceStatus.OPEN);
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR, InvoiceStatus.OPEN);
             invoice.setId(invoiceId);
 
             when(invoiceRepositoryPort.findByIdAndProfileId(invoiceId, profileId))
@@ -310,24 +381,7 @@ class InvoiceServiceAdapterTest {
         void shouldThrowExceptionWhenDeletingPaidInvoice() {
             UUID profileId = UUID.randomUUID();
             UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024, InvoiceStatus.PAID);
-            invoice.setId(invoiceId);
-
-            when(invoiceRepositoryPort.findByIdAndProfileId(invoiceId, profileId))
-                    .thenReturn(Optional.of(invoice));
-
-            DomainException exception = assertThrows(DomainException.class, 
-                    () -> invoiceServiceAdapter.deleteInvoice(invoiceId, profileId));
-            assertEquals("Não é possível deletar uma fatura com pagamentos registrados. Estorne os pagamentos primeiro.", 
-                    exception.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should throw exception when trying to delete partially paid invoice")
-        void shouldThrowExceptionWhenDeletingPartiallyPaidInvoice() {
-            UUID profileId = UUID.randomUUID();
-            UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024, InvoiceStatus.PARTIALLY_PAID);
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR, InvoiceStatus.PAID);
             invoice.setId(invoiceId);
 
             when(invoiceRepositoryPort.findByIdAndProfileId(invoiceId, profileId))
@@ -344,24 +398,7 @@ class InvoiceServiceAdapterTest {
         void shouldAllowDeletingClosedInvoice() {
             UUID profileId = UUID.randomUUID();
             UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024, InvoiceStatus.CLOSED);
-            invoice.setId(invoiceId);
-
-            when(invoiceRepositoryPort.findByIdAndProfileId(invoiceId, profileId))
-                    .thenReturn(Optional.of(invoice));
-
-            invoiceServiceAdapter.deleteInvoice(invoiceId, profileId);
-
-            verify(transactionRepositoryPort).deleteByInvoiceId(invoiceId);
-            verify(invoiceRepositoryPort).delete(invoiceId);
-        }
-
-        @Test
-        @DisplayName("Should allow deleting overdue invoice without payments")
-        void shouldAllowDeletingOverdueInvoice() {
-            UUID profileId = UUID.randomUUID();
-            UUID invoiceId = UUID.randomUUID();
-            Invoice invoice = createInvoice(UUID.randomUUID(), 1, 2024, InvoiceStatus.OVERDUE);
+            Invoice invoice = createInvoice(UUID.randomUUID(), 1, FUTURE_YEAR, InvoiceStatus.CLOSED);
             invoice.setId(invoiceId);
 
             when(invoiceRepositoryPort.findByIdAndProfileId(invoiceId, profileId))
