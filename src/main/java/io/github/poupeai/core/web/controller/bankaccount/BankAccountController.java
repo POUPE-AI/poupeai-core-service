@@ -33,7 +33,7 @@ public class BankAccountController {
         description = "Retorna todas as contas bancárias do usuário",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<List<BankAccountResponse>> getBankAccounts(
+    public ResponseEntity<List<BankAccountResponse>> list(
         @Parameter(hidden = true) @CurrentUserId String userId) {
 
         UUID profileId = UUID.fromString(userId);
@@ -55,7 +55,7 @@ public class BankAccountController {
         description = "Retorna detalhes de uma conta bancária específica",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<BankAccountResponse> getBankAccountById(
+    public ResponseEntity<BankAccountResponse> getById(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
 
@@ -72,7 +72,7 @@ public class BankAccountController {
         description = "Cria uma nova conta bancária",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<BankAccountResponse> createBankAccount(
+    public ResponseEntity<BankAccountResponse> create(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @RequestBody @Valid BankAccountRequest request) {
 
@@ -88,7 +88,7 @@ public class BankAccountController {
         description = "Atualiza os dados de uma conta bancária existente",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<BankAccountResponse> updateBankAccount(
+    public ResponseEntity<BankAccountResponse> update(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id, @RequestBody @Valid BankAccountUpdateRequest request) {
 
@@ -105,7 +105,7 @@ public class BankAccountController {
         description = "Deleta uma conta bancária específica",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<Void> deleteBankAccount(
+    public ResponseEntity<Void> delete(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
 
