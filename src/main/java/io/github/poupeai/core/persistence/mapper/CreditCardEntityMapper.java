@@ -10,11 +10,12 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface CreditCardEntityMapper {
     @Mapping(target = "profileId", source = "profile.userId")
-    @Mapping(target = "institutionId", source = "institution.id")
+    @Mapping(target = "institution", source = "institution")
+    @Mapping(target = "usedCreditLimit", expression = "java(java.math.BigDecimal.ZERO)")
     CreditCard toDomain(CreditCardEntity entity);
 
     @Mapping(target = "profile", ignore = true)
-    @Mapping(target = "institution", ignore = true)
+    @Mapping(target = "institution", source = "institution")
     CreditCardEntity toEntity(CreditCard domain);
 
     List<CreditCard> toDomainList(List<CreditCardEntity> entities);

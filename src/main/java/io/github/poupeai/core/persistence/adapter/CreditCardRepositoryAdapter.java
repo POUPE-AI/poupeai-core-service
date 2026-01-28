@@ -29,8 +29,8 @@ public class CreditCardRepositoryAdapter implements CreditCardRepositoryPort {
         var profile = profileRepository.getReferenceById(creditCard.getProfileId());
         entity.setProfile(profile);
 
-        if (creditCard.getInstitutionId() != null) {
-            var institution = institutionRepository.getReferenceById(creditCard.getInstitutionId());
+        if (creditCard.getInstitution() != null && creditCard.getInstitution().getId() != null) {
+            var institution = institutionRepository.getReferenceById(creditCard.getInstitution().getId());
             entity.setInstitution(institution);
         }
 
@@ -48,8 +48,8 @@ public class CreditCardRepositoryAdapter implements CreditCardRepositoryPort {
         existingEntity.setClosingDay(creditCard.getClosingDay());
         existingEntity.setDueDay(creditCard.getDueDay());
 
-        if (creditCard.getInstitutionId() != null) {
-            var institution = institutionRepository.getReferenceById(creditCard.getInstitutionId());
+        if (creditCard.getInstitution() != null && creditCard.getInstitution().getId() != null) {
+            var institution = institutionRepository.getReferenceById(creditCard.getInstitution().getId());
             existingEntity.setInstitution(institution);
         } else {
             existingEntity.setInstitution(null);

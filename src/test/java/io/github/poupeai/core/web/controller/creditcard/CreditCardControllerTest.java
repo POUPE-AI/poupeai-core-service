@@ -40,12 +40,12 @@ class CreditCardControllerTest {
     void shouldGetCreditCardsSuccessfully() {
         String userId = UUID.randomUUID().toString();
         List<CreditCard> creditCards = List.of(new CreditCard());
-        List<CreditCardResponse> responses = List.of(new CreditCardResponse(null, null, null, null, null, null, null, null));
+        List<CreditCardResponse> responses = List.of(new CreditCardResponse(null, null, null, null, null, null, null, null, null));
 
         when(creditCardServicePort.findAllByProfileId(UUID.fromString(userId))).thenReturn(creditCards);
         when(creditCardMapper.toResponseList(creditCards)).thenReturn(responses);
 
-        ResponseEntity<List<CreditCardResponse>> result = creditCardController.getCreditCards(userId);
+        ResponseEntity<List<CreditCardResponse>> result = creditCardController.list(userId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(responses, result.getBody());
@@ -57,12 +57,12 @@ class CreditCardControllerTest {
         UUID userId = UUID.randomUUID();
         UUID cardId = UUID.randomUUID();
         CreditCard card = CreditCard.builder().id(cardId).profileId(userId).build();
-        CreditCardResponse response = new CreditCardResponse(cardId, null, null, null, null, null, null, null);
+        CreditCardResponse response = new CreditCardResponse(cardId, null, null, null, null, null, null, null, null);
 
         when(creditCardServicePort.findByIdAndProfileId(cardId, userId)).thenReturn(card);
         when(creditCardMapper.toResponse(card)).thenReturn(response);
 
-        ResponseEntity<CreditCardResponse> result = creditCardController.getCreditCardById(userId.toString(), cardId);
+        ResponseEntity<CreditCardResponse> result = creditCardController.getById(userId.toString(), cardId);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
@@ -75,13 +75,13 @@ class CreditCardControllerTest {
         CreditCardRequest request = new CreditCardRequest();
         CreditCard card = new CreditCard();
         CreditCard savedCard = new CreditCard();
-        CreditCardResponse response = new CreditCardResponse(null, null, null, null, null, null, null, null);
+        CreditCardResponse response = new CreditCardResponse(null, null, null, null, null, null, null, null, null);
 
         when(creditCardMapper.toDomain(eq(request), any(UUID.class))).thenReturn(card);
         when(creditCardServicePort.create(card)).thenReturn(savedCard);
         when(creditCardMapper.toResponse(savedCard)).thenReturn(response);
 
-        ResponseEntity<CreditCardResponse> result = creditCardController.createCreditCard(userId, request);
+        ResponseEntity<CreditCardResponse> result = creditCardController.create(userId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
@@ -95,14 +95,14 @@ class CreditCardControllerTest {
         UUID cardId = UUID.randomUUID();
         CreditCardUpdateRequest request = new CreditCardUpdateRequest();
         CreditCard card = CreditCard.builder().id(cardId).profileId(userId).build();
-        CreditCardResponse response = new CreditCardResponse(cardId, null, null, null, null, null, null, null);
+        CreditCardResponse response = new CreditCardResponse(cardId, null, null, null, null, null, null, null, null);
 
         when(creditCardServicePort.findByIdAndProfileId(cardId, userId)).thenReturn(card);
         doNothing().when(creditCardMapper).updateDomainFromDto(eq(request), eq(card));
         when(creditCardServicePort.update(card, userId)).thenReturn(card);
         when(creditCardMapper.toResponse(card)).thenReturn(response);
 
-        ResponseEntity<CreditCardResponse> result = creditCardController.updateCreditCard(userId.toString(), cardId, request);
+        ResponseEntity<CreditCardResponse> result = creditCardController.update(userId.toString(), cardId, request);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
@@ -115,7 +115,7 @@ class CreditCardControllerTest {
         UUID userId = UUID.randomUUID();
         UUID cardId = UUID.randomUUID();
 
-        ResponseEntity<Void> result = creditCardController.deleteCreditCard(userId.toString(), cardId);
+        ResponseEntity<Void> result = creditCardController.delete(userId.toString(), cardId);
 
         assertEquals(HttpStatus.NO_CONTENT, result.getStatusCode());
         verify(creditCardServicePort).delete(cardId, userId);

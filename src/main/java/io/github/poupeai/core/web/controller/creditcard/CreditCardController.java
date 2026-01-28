@@ -33,7 +33,7 @@ public class CreditCardController {
         description = "Retorna todos os cartões de crédito do usuário",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<List<CreditCardResponse>> getCreditCards(
+    public ResponseEntity<List<CreditCardResponse>> list(
         @Parameter(hidden = true) @CurrentUserId String userId) {
 
         List<CreditCard> creditCards = creditCardServicePort.findAllByProfileId(UUID.fromString(userId));
@@ -46,7 +46,7 @@ public class CreditCardController {
         description = "Retorna detalhes de um cartão de crédito específico",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<CreditCardResponse> getCreditCardById(
+    public ResponseEntity<CreditCardResponse> getById(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
 
@@ -60,7 +60,7 @@ public class CreditCardController {
         description = "Cria um novo cartão de crédito",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<CreditCardResponse> createCreditCard(
+    public ResponseEntity<CreditCardResponse> create(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @RequestBody @Valid CreditCardRequest request) {
 
@@ -76,7 +76,7 @@ public class CreditCardController {
         description = "Atualiza os dados de um cartão de crédito existente",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<CreditCardResponse> updateCreditCard(
+    public ResponseEntity<CreditCardResponse> update(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id, @RequestBody @Valid CreditCardUpdateRequest request) {
 
@@ -93,7 +93,7 @@ public class CreditCardController {
         description = "Deleta um cartão de crédito específico",
         security = @SecurityRequirement(name = "bearer-key")
     )
-    public ResponseEntity<Void> deleteCreditCard(
+    public ResponseEntity<Void> delete(
         @Parameter(hidden = true) @CurrentUserId String userId,
         @PathVariable UUID id) {
 
