@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -49,14 +50,23 @@ public class TransactionController {
             @RequestParam(required = false) TransactionType type,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) UUID purchaseGroupUuid,
+            @RequestParam(required = false) LocalDate transactionDateStart,
+            @RequestParam(required = false) LocalDate transactionDateEnd,
             @RequestParam(defaultValue = "DESC") String sortDirection,
             @RequestParam(defaultValue = "transactionDate") String sortBy) {
 
         UUID userId = UUID.fromString(userIdStr);
+
+        if (transactionDateEnd == null) {
+            transactionDateEnd = LocalDate.now();
+        }
+
         TransactionFilter filter = TransactionFilter.builder()
                 .page(page).size(size)
                 .type(type).categoryId(categoryId)
                 .purchaseGroupUuid(purchaseGroupUuid)
+                .transactionDateStart(transactionDateStart)
+                .transactionDateEnd(transactionDateEnd)
                 .sortDirection(sortDirection).sortBy(sortBy)
                 .build();
 

@@ -68,7 +68,7 @@ class TransactionControllerTest {
         when(transactionMapper.toResponseList(anyList())).thenReturn(List.of(responseDto));
 
         ResponseEntity<PageResponse<TransactionResponse>> result = transactionController.list(
-                userId.toString(), 0, 10, TransactionType.EXPENSE, null, null, "ASC", "name"
+                userId.toString(), 0, 10, TransactionType.EXPENSE, null, null, null, null, "ASC", "name"
         );
 
         assertEquals(HttpStatus.OK, result.getStatusCode());

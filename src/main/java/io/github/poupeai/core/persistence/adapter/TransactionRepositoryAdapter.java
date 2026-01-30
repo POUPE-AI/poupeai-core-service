@@ -139,6 +139,13 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
             if (filter.getPurchaseGroupUuid() != null) {
                 predicates.add(cb.equal(root.get("purchaseGroupUuid"), filter.getPurchaseGroupUuid()));
             }
+            if (filter.getTransactionDateStart() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("transactionDate"), filter.getTransactionDateStart()));
+            }
+            if (filter.getTransactionDateEnd() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("transactionDate"), filter.getTransactionDateEnd()));
+            }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
