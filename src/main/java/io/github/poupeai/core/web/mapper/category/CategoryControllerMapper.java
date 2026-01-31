@@ -4,6 +4,7 @@ import io.github.poupeai.core.domain.model.Category;
 import io.github.poupeai.core.web.dto.category.CategoryRequest;
 import io.github.poupeai.core.web.dto.category.CategoryResponse;
 import io.github.poupeai.core.web.dto.category.CategoryUpdateRequest;
+import io.github.poupeai.core.web.dto.category.InternalCategoryResponse;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -31,4 +32,6 @@ public interface CategoryControllerMapper {
     CategoryResponse toResponse(Category domain);
     
     List<CategoryResponse> toResponseList(List<Category> categories);
+
+    List<InternalCategoryResponse> toInternalResponseList(List<Category> categories);
 }
