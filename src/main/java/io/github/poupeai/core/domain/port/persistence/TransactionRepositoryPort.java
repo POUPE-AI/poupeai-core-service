@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface TransactionRepositoryPort {
@@ -49,4 +50,6 @@ public interface TransactionRepositoryPort {
 
         List<Transaction> findByProfileIdAndBankAccountNotNullAndDateRange(UUID profileId, LocalDate startDate,
                         LocalDate endDate);
+
+        Set<String> findExistingOriginalStatementIds(Set<String> originalStatementIds);
 }

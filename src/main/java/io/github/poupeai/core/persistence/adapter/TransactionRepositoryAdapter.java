@@ -24,8 +24,11 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -195,5 +198,13 @@ public class TransactionRepositoryAdapter implements TransactionRepositoryPort {
             LocalDate endDate) {
         return mapper.toDomainList(
                 repository.findByProfileIdAndBankAccountNotNullAndDateRange(profileId, startDate, endDate));
+    }
+
+    @Override
+    public Set<String> findExistingOriginalStatementIds(Set<String> originalStatementIds) {
+        if (originalStatementIds == null || originalStatementIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(repository.findExistingOriginalStatementIds(originalStatementIds));
     }
 }
