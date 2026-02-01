@@ -9,7 +9,9 @@ import java.util.UUID;
 
 public interface IngestionJobServicePort {
     IngestionJob createIngestionJob(UUID profileId, InputStream fileContent, String fileName, String contentType,
-            long size, UUID bankAccountId, UUID fallbackCategoryId);
+                                    long size, UUID bankAccountId,
+                                    UUID fallbackIncomeCategoryId,
+                                    UUID fallbackExpenseCategoryId);
 
     List<IngestionJob> findAllByProfileId(UUID profileId);
 

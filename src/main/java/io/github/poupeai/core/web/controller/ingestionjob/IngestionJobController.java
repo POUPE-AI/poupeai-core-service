@@ -48,7 +48,8 @@ public class IngestionJobController {
             @Parameter(hidden = true) @CurrentUserId String userId,
             @RequestParam("file") MultipartFile file,
             @RequestParam("bankAccountId") UUID bankAccountId,
-            @RequestParam("fallbackCategoryId") UUID fallbackCategoryId) throws IOException {
+            @RequestParam("fallbackIncomeCategoryId") UUID fallbackIncomeCategoryId,
+            @RequestParam("fallbackExpenseCategoryId") UUID fallbackExpenseCategoryId) throws IOException {
 
         UUID profileId = UUID.fromString(userId);
 
@@ -59,7 +60,8 @@ public class IngestionJobController {
                 file.getContentType(),
                 file.getSize(),
                 bankAccountId,
-                fallbackCategoryId);
+                fallbackIncomeCategoryId,
+                fallbackExpenseCategoryId);
 
         return ResponseEntity.ok(mapper.toResponse(job));
     }

@@ -33,8 +33,10 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
     @Override
     @Transactional
     public IngestionJob createIngestionJob(UUID profileId, InputStream fileContent, String fileName, String contentType,
-                                           long size, UUID bankAccountId, UUID fallbackCategoryId) {
-        log.info("Tentando criar job de ingestão: {}, bankAccount: {}, fallbackCategory: {}", profileId, bankAccountId, fallbackCategoryId);
+                                           long size, UUID bankAccountId,
+                                           UUID fallbackIncomeCategoryId,
+                                           UUID fallbackExpenseCategoryId) {
+        log.info("Tentando criar job de ingestão: {}, bankAccount: {}", profileId, bankAccountId);
 
         if (size <= 0) {
             throw new DomainException("Arquivo inválido.");
@@ -69,7 +71,8 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
         payload.put("file_key", fileKey);
         payload.put("profile_id", profileId);
         payload.put("bank_account_id", bankAccountId);
-        payload.put("fallback_category_id", fallbackCategoryId);
+        payload.put("fallback_income_category_id", fallbackIncomeCategoryId);
+        payload.put("fallback_expense_category_id", fallbackExpenseCategoryId);
 
         PoupeAiEvent<Map<String, Object>> event = PoupeAiEvent.<Map<String, Object>>builder()
                 .messageId(UUID.randomUUID())
