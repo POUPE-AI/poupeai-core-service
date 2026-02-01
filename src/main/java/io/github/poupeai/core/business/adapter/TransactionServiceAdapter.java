@@ -231,4 +231,12 @@ public class TransactionServiceAdapter implements TransactionServicePort {
             t.setAttachmentUrl(storagePort.generatePresignedUrl(t.getAttachmentKey()));
         }
     }
+
+    @Override
+    @Transactional
+    public void createBatch(List<Transaction> transactions) {
+        if (transactions == null || transactions.isEmpty()) return;
+
+        transactionRepositoryPort.createAll(transactions);
+    }
 }
