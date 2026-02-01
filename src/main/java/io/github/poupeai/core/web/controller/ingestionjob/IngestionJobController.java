@@ -47,7 +47,9 @@ public class IngestionJobController {
     public ResponseEntity<IngestionJobResponse> importBankStatement(
             @Parameter(hidden = true) @CurrentUserId String userId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam("bankAccountId") UUID bankAccountId) throws IOException {
+            @RequestParam("bankAccountId") UUID bankAccountId,
+            @RequestParam("fallbackIncomeCategoryId") UUID fallbackIncomeCategoryId,
+            @RequestParam("fallbackExpenseCategoryId") UUID fallbackExpenseCategoryId) throws IOException {
 
         UUID profileId = UUID.fromString(userId);
 
@@ -57,7 +59,9 @@ public class IngestionJobController {
                 file.getOriginalFilename(),
                 file.getContentType(),
                 file.getSize(),
-                bankAccountId);
+                bankAccountId,
+                fallbackIncomeCategoryId,
+                fallbackExpenseCategoryId);
 
         return ResponseEntity.ok(mapper.toResponse(job));
     }

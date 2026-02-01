@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,4 +71,7 @@ public interface TransactionRepository
                         @Param("profileId") UUID profileId,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT t.originalStatementId FROM TransactionEntity t WHERE t.originalStatementId IN :ids")
+        List<String> findExistingOriginalStatementIds(@Param("ids") Collection<String> ids);
 }

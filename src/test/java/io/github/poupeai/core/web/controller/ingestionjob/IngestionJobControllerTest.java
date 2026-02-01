@@ -65,6 +65,8 @@ class IngestionJobControllerTest {
     void shouldImportBankStatement() throws IOException {
         UUID userId = UUID.randomUUID();
         UUID bankAccountId = UUID.randomUUID();
+        UUID incomeCatId = UUID.randomUUID();
+        UUID expenseCatId = UUID.randomUUID();
 
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream("a,b,c".getBytes()));
         when(file.getOriginalFilename()).thenReturn("statement.csv");
@@ -79,17 +81,41 @@ class IngestionJobControllerTest {
 
         IngestionJobResponse response = IngestionJobResponse.builder().id(job.getId()).status(JobStatus.PENDING).build();
 
-        when(ingestionJobService.createIngestionJob(eq(userId), any(), eq("statement.csv"), eq("text/csv"), eq(5L), eq(bankAccountId)))
-                .thenReturn(job);
+        when(ingestionJobService.createIngestionJob(
+                eq(userId),
+                any(),
+                eq("statement.csv"),
+                eq("text/csv"),
+                eq(5L),
+                eq(bankAccountId),
+                eq(incomeCatId),
+                eq(expenseCatId)
+        )).thenReturn(job);
+
         when(mapper.toResponse(job)).thenReturn(response);
 
-        ResponseEntity<IngestionJobResponse> result = controller.importBankStatement(userId.toString(), file, bankAccountId);
+        ResponseEntity<IngestionJobResponse> result = controller.importBankStatement(
+                userId.toString(),
+                file,
+                bankAccountId,
+                incomeCatId,
+                expenseCatId
+        );
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
         assertEquals(job.getId(), result.getBody().getId());
 
-        verify(ingestionJobService).createIngestionJob(eq(userId), any(), eq("statement.csv"), eq("text/csv"), eq(5L), eq(bankAccountId));
+        verify(ingestionJobService).createIngestionJob(
+                eq(userId),
+                any(),
+                eq("statement.csv"),
+                eq("text/csv"),
+                eq(5L),
+                eq(bankAccountId),
+                eq(incomeCatId),
+                eq(expenseCatId)
+        );
         verify(mapper).toResponse(job);
     }
 }

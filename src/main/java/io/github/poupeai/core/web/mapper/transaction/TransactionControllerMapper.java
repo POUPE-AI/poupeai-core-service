@@ -4,6 +4,7 @@ import io.github.poupeai.core.domain.model.Category;
 import io.github.poupeai.core.domain.model.Transaction;
 import io.github.poupeai.core.web.dto.category.CategorySummary;
 import io.github.poupeai.core.web.dto.transaction.CreateTransactionRequest;
+import io.github.poupeai.core.web.dto.transaction.InternalCreateTransactionRequest;
 import io.github.poupeai.core.web.dto.transaction.TransactionResponse;
 import io.github.poupeai.core.web.dto.transaction.UpdateTransactionRequest;
 import org.mapstruct.Mapper;
@@ -35,10 +36,28 @@ public interface TransactionControllerMapper {
     @Mapping(target = "isInstallment", ignore = true)
     Transaction toDomain(UpdateTransactionRequest request, UUID id);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "transactionDate", source = "date")
+    @Mapping(target = "category.id", source = "categoryId")
+    @Mapping(target = "originalStatementDescription", source = "description")
+    @Mapping(target = "creditCardId", ignore = true)
+    @Mapping(target = "invoiceId", ignore = true)
+    @Mapping(target = "isInstallment", constant = "false")
+    @Mapping(target = "installmentNumber", ignore = true)
+    @Mapping(target = "totalInstallments", ignore = true)
+    @Mapping(target = "purchaseGroupUuid", ignore = true)
+    @Mapping(target = "attachmentKey", ignore = true)
+    @Mapping(target = "attachmentUrl", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    Transaction toDomain(InternalCreateTransactionRequest request);
+
     @Mapping(target = "category", source = "category")
     TransactionResponse toResponse(Transaction domain);
 
     List<TransactionResponse> toResponseList(List<Transaction> domains);
+
+    List<Transaction> toDomainListFromInternal(List<InternalCreateTransactionRequest> requests);
 
     CategorySummary mapCategory(Category category);
 }

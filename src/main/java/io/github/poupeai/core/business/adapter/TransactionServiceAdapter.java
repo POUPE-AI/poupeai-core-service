@@ -23,9 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -229,6 +231,28 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     private void enrichWithUrl(Transaction t) {
         if (t.getAttachmentKey() != null) {
             t.setAttachmentUrl(storagePort.generatePresignedUrl(t.getAttachmentKey()));
+        }
+    }
+
+    @Override
+    @Transactional
+    public void createBatch(List<Transaction> transactions) {
+        if (transactions == null || transactions.isEmpty()) return;
+
+        Set<String> originalIds = transactions.stream()
+                .map(Transaction::getOriginalStatementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<String> existingIds = originalIds.isEmpty() ? Set.of() :
+                transactionRepositoryPort.findExistingOriginalStatementIds(originalIds);
+
+        List<Transaction> transactionsToSave = transactions.stream()
+                .filter(t -> t.getOriginalStatementId() == null || !existingIds.contains(t.getOriginalStatementId()))
+                .toList();
+
+        if (!transactionsToSave.isEmpty()) {
+            transactionRepositoryPort.createAll(transactionsToSave);
         }
     }
 }
