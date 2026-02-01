@@ -4,7 +4,7 @@ CREATE TABLE audit_logs (
     action_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     action_type VARCHAR(50) NOT NULL,
     entity_type VARCHAR(100) NOT NULL,
-    entity_id VARCHAR(36) NOT NULL,
+    entity_id VARCHAR(255) NOT NULL,
     changes JSONB,
     source_ip VARCHAR(45),
     correlation_id UUID,
