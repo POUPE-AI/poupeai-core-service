@@ -3,6 +3,7 @@ package io.github.poupeai.core.business.adapter;
 import io.github.poupeai.core.domain.model.DestinationType;
 import io.github.poupeai.core.domain.event.PoupeAiEvent;
 import io.github.poupeai.core.domain.exception.DomainException;
+import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.IngestionJob;
 import io.github.poupeai.core.domain.model.JobStatus;
 import io.github.poupeai.core.domain.port.business.IngestionJobServicePort;
@@ -32,15 +33,15 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
     @Override
     @Transactional
     public IngestionJob createIngestionJob(UUID profileId, InputStream fileContent, String fileName, String contentType,
-            long size, UUID bankAccountId) {
-        log.info("Tentando criar job de ingestão: {}, bankAccount: {}", profileId, bankAccountId);
+                                           long size, UUID bankAccountId, UUID fallbackCategoryId) {
+        log.info("Tentando criar job de ingestão: {}, bankAccount: {}, fallbackCategory: {}", profileId, bankAccountId, fallbackCategoryId);
 
         if (size <= 0) {
             throw new DomainException("Arquivo inválido.");
         }
 
-        if (fileName == null || !fileName.toLowerCase().endsWith(".csv")) {
-            throw new DomainException("Tipo de arquivo inválido. Somente arquivos .csv são permitidos.");
+        if (fileName == null || !fileName.toLowerCase().endsWith(".ofx")) {
+            throw new DomainException("Tipo de arquivo inválido. Somente arquivos .ofx são permitidos.");
         }
 
         String fileKey = String.format("statements/%s/%s-%s", profileId, UUID.randomUUID(), fileName);
@@ -68,6 +69,7 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
         payload.put("file_key", fileKey);
         payload.put("profile_id", profileId);
         payload.put("bank_account_id", bankAccountId);
+        payload.put("fallback_category_id", fallbackCategoryId);
 
         PoupeAiEvent<Map<String, Object>> event = PoupeAiEvent.<Map<String, Object>>builder()
                 .messageId(UUID.randomUUID())
@@ -85,5 +87,26 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
     @Override
     public List<IngestionJob> findAllByProfileId(UUID profileId) {
         return ingestionJobRepository.findAllByProfileId(profileId);
+    }
+
+    @Override
+    @Transactional
+    public void updateJobStatus(UUID jobId, JobStatus status, String summary, String errorDetails) {
+        log.info("Atualizando status do job {} para {}", jobId, status);
+
+        IngestionJob job = ingestionJobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job de ingestão não encontrado: " + jobId));
+
+        job.setStatus(status);
+
+        if (summary != null) {
+            job.setSummary(summary);
+        }
+
+        if (errorDetails != null) {
+            job.setErrorDetails(errorDetails);
+        }
+
+        ingestionJobRepository.save(job);
     }
 }
