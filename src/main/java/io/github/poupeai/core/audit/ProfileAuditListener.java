@@ -7,18 +7,20 @@ import jakarta.persistence.PostRemove;
 import jakarta.persistence.PostUpdate;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.WeakHashMap;
 
 @Slf4j
 public class ProfileAuditListener {
 
     private static final String ENTITY_TYPE = "Profile";
 
-    private static final Map<UUID, Map<String, Object>> OLD_VALUES_CACHE = new ConcurrentHashMap<>();
+    private static final Map<UUID, Map<String, Object>> OLD_VALUES_CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     @PostLoad
     public void postLoad(ProfileEntity entity) {
@@ -38,25 +40,31 @@ public class ProfileAuditListener {
             log.info("Evento de auditoria publicado para ação: CREATE, profile_id: {}", entity.getUserId());
         } catch (Exception e) {
             log.error("Falha ao publicar evento de auditoria para Profile CREATE: {}", e.getMessage(), e);
+            // Clean up any cached state for this entity to avoid stale data on failed CREATE operations
+            if (entity != null && entity.getUserId() != null) {
+                OLD_VALUES_CACHE.remove(entity.getUserId());
+            }
         }
     }
 
     @PostUpdate
     public void postUpdate(ProfileEntity entity) {
         try {
-            Map<String, Object> oldValues = OLD_VALUES_CACHE.get(entity.getUserId());
-            Map<String, Object> changes = detectChanges(oldValues, captureEntityState(entity));
+            OLD_VALUES_CACHE.compute(entity.getUserId(), (id, oldValues) -> {
+                Map<String, Object> newState = captureEntityState(entity);
+                Map<String, Object> changes = detectChanges(oldValues, newState);
 
-            if (changes.isEmpty()) {
-                log.debug("Sem mudanças detectadas no perfil: {}", entity.getUserId());
-                return;
-            }
+                if (changes.isEmpty()) {
+                    log.debug("Sem mudanças detectadas no perfil: {}", entity.getUserId());
+                    return newState;
+                }
 
-            publishAuditEvent(entity, "UPDATE", changes);
-            log.info("Evento de auditoria publicado para ação: UPDATE, profile_id: {}, changes: {}",
-                    entity.getUserId(), changes.keySet());
+                publishAuditEvent(entity, "UPDATE", changes);
+                log.info("Evento de auditoria publicado para ação: UPDATE, profile_id: {}, changes: {}",
+                        entity.getUserId(), changes.keySet());
 
-            OLD_VALUES_CACHE.put(entity.getUserId(), captureEntityState(entity));
+                return newState;
+            });
         } catch (Exception e) {
             log.error("Falha ao publicar evento de auditoria para Profile UPDATE: {}", e.getMessage(), e);
         }

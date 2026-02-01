@@ -14,3 +14,4 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_audit_logs_profile_id ON audit_logs(profile_id);
 CREATE INDEX idx_audit_logs_action_time ON audit_logs(action_time);
 CREATE INDEX idx_audit_logs_entity_type ON audit_logs(entity_type);
+CREATE INDEX idx_audit_logs_correlation_id ON audit_logs(correlation_id);
