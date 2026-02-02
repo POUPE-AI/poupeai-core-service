@@ -9,7 +9,9 @@ import io.github.poupeai.core.domain.model.JobStatus;
 import io.github.poupeai.core.domain.port.business.IngestionJobServicePort;
 import io.github.poupeai.core.domain.port.messaging.IngestionJobProducerPort;
 import io.github.poupeai.core.domain.port.output.StoragePort;
+import io.github.poupeai.core.domain.port.persistence.BankAccountRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.IngestionJobRepositoryPort;
+import io.github.poupeai.core.domain.port.persistence.ProfileRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,9 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
     private final IngestionJobProducerPort messagePublisher;
     private final StoragePort storagePort;
 
+    private final ProfileRepositoryPort profileRepository;
+    private final BankAccountRepositoryPort bankAccountRepository;
+
     @Override
     @Transactional
     public IngestionJob createIngestionJob(UUID profileId, InputStream fileContent, String fileName, String contentType,
@@ -45,6 +50,12 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
         if (fileName == null || !fileName.toLowerCase().endsWith(".ofx")) {
             throw new DomainException("Tipo de arquivo inválido. Somente arquivos .ofx são permitidos.");
         }
+
+        var profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Perfil não encontrado: " + profileId));
+
+        var bankAccount = bankAccountRepository.findByIdAndProfileId(bankAccountId, profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("Conta bancária não encontrada ou não pertence ao perfil: " + bankAccountId));
 
         String fileKey = String.format("statements/%s/%s-%s", profileId, UUID.randomUUID(), fileName);
 
@@ -69,8 +80,18 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
         Map<String, Object> payload = new HashMap<>();
         payload.put("job_id", savedJob.getId());
         payload.put("file_key", fileKey);
-        payload.put("profile_id", profileId);
-        payload.put("bank_account_id", bankAccountId);
+
+        payload.put("profile", Map.of(
+                "id", profile.getUserId(),
+                "name", profile.getFirstName(),
+                "email", profile.getEmail()
+        ));
+
+        payload.put("bank_account", Map.of(
+                "id", bankAccount.getId(),
+                "name", bankAccount.getName()
+        ));
+
         payload.put("fallback_income_category_id", fallbackIncomeCategoryId);
         payload.put("fallback_expense_category_id", fallbackExpenseCategoryId);
 
