@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
@@ -18,6 +19,7 @@ import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.CreditCardRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TransactionServiceAdapter implements TransactionServicePort {
     private final TransactionRepositoryPort transactionRepositoryPort;
     private final BankAccountRepositoryPort bankAccountRepositoryPort;
@@ -44,7 +47,10 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     public Transaction create(Transaction transaction) {
         UUID categoryId = transaction.getCategory().getId();
         Category category = categoryRepositoryPort.findByIdAndProfileId(categoryId, transaction.getProfileId())
-                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
+                .orElseThrow(() -> {
+                    log.warn("Validação falhou: Categoria {} inexistente para usuário {}", categoryId, transaction.getProfileId());
+                    return new ResourceNotFoundException("Categoria não encontrada.");
+                });
 
         Transaction enrichedTransaction = transaction.toBuilder()
                 .category(category)
@@ -54,11 +60,16 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         enrichedTransaction.validateCreationState();
         validateExternalResources(enrichedTransaction);
 
+        Transaction saved;
         if (enrichedTransaction.getCreditCardId() != null) {
-            return processCreditCardTransaction(enrichedTransaction);
+            saved = processCreditCardTransaction(enrichedTransaction);
+        } else {
+            saved = transactionRepositoryPort.create(enrichedTransaction);
         }
 
-        return transactionRepositoryPort.create(enrichedTransaction);
+        Log.event(log, "TRANSACTION_CREATED", "Transação criada. ID: {}, Valor: {}", saved.getId(), saved.getAmount());
+
+        return saved;
     }
 
     @Override
@@ -101,6 +112,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         if (oldInvoiceId != null) invoiceServicePort.updateInvoiceTotals(oldInvoiceId);
         if (updated.getInvoiceId() != null) invoiceServicePort.updateInvoiceTotals(updated.getInvoiceId());
 
+        Log.event(log, "TRANSACTION_UPDATED", "Transação atualizada. ID: {}", updated.getId());
         return updated;
     }
 
@@ -133,11 +145,14 @@ public class TransactionServiceAdapter implements TransactionServicePort {
                     .map(Transaction::getInvoiceId)
                     .distinct()
                     .forEach(invoiceServicePort::updateInvoiceTotals);
+
+            Log.event(log, "TRANSACTION_GROUP_DELETED", "Grupo excluído. UUID: {}", transaction.getPurchaseGroupUuid());
         } else {
             transactionRepositoryPort.delete(id);
             if (transaction.getInvoiceId() != null) {
                 invoiceServicePort.updateInvoiceTotals(transaction.getInvoiceId());
             }
+            Log.event(log, "TRANSACTION_DELETED", "Transação excluída. ID: {}", id);
         }
     }
 
@@ -176,6 +191,8 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         Transaction updated = transaction.withAttachmentKey(key);
         Transaction saved = transactionRepositoryPort.update(updated);
         enrichWithUrl(saved);
+
+        Log.event(log, "RECEIPT_UPLOADED", "Comprovante anexado. Key: {}", key);
         return saved;
     }
 
@@ -189,6 +206,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
         storagePort.delete(transaction.getAttachmentKey());
 
         Transaction updated = transaction.withAttachmentKey(null);
+        Log.event(log, "RECEIPT_DELETED", "Comprovante removido da transação {}", id);
         return transactionRepositoryPort.update(updated);
     }
 
@@ -219,6 +237,7 @@ public class TransactionServiceAdapter implements TransactionServicePort {
     private void validateExternalResources(Transaction t) {
         if (t.getBankAccountId() != null) {
             if (!bankAccountRepositoryPort.existsByIdAndProfileId(t.getBankAccountId(), t.getProfileId())) {
+                log.warn("Validação falhou: Conta bancária inexistente {}", t.getBankAccountId());
                 throw new ResourceNotFoundException("Conta bancária não encontrada.");
             }
         }
@@ -253,6 +272,15 @@ public class TransactionServiceAdapter implements TransactionServicePort {
 
         if (!transactionsToSave.isEmpty()) {
             transactionRepositoryPort.createAll(transactionsToSave);
+
+            Map<String, String> context = Map.of(
+                    "event.type", "TRANSACTION_BATCH_IMPORTED",
+                    "context.total_received", String.valueOf(transactions.size()),
+                    "context.total_saved", String.valueOf(transactionsToSave.size()),
+                    "context.total_skipped", String.valueOf(transactions.size() - transactionsToSave.size())
+            );
+
+            Log.run(context, () -> log.info("Lote de transações importado com sucesso."));
         }
     }
 }

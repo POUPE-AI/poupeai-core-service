@@ -60,7 +60,7 @@ public class MinioStorageAdapter implements StoragePort {
             boolean found = client.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
             if (!found) {
                 client.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-                log.info("Bucket '{}' criado.", bucketName);
+                log.info("Bucket '{}' criado no MinIO.", bucketName);
             }
 
             var builder = PutObjectArgs.builder()
@@ -75,10 +75,8 @@ public class MinioStorageAdapter implements StoragePort {
 
             client.putObject(builder.build());
 
-            log.info("Arquivo enviado com sucesso: bucket='{}', key='{}', tags={}", bucketName, key, tags);
-
         } catch (Exception e) {
-            log.error("Erro ao enviar arquivo para o MinIO", e);
+            log.error("Erro ao enviar arquivo para o MinIO: bucket='{}', key='{}'", bucketName, key, e);
             throw new RuntimeException("Falha ao enviar arquivo para o storage", e);
         }
     }
@@ -92,7 +90,6 @@ public class MinioStorageAdapter implements StoragePort {
                             .bucket(bucketName)
                             .object(key)
                             .build());
-            log.info("Arquivo removido com sucesso: bucket='{}', key='{}'", bucketName, key);
         } catch (Exception e) {
             log.error("Erro ao remover arquivo do MinIO: key='{}'", key, e);
             throw new RuntimeException("Falha ao remover arquivo do storage", e);
@@ -112,7 +109,7 @@ public class MinioStorageAdapter implements StoragePort {
                             .build()
             );
         } catch (Exception e) {
-            log.error("Erro ao gerar URL para key: {}", key, e);
+            log.error("Erro ao gerar URL assinada para key: {}", key, e);
             return null;
         }
     }

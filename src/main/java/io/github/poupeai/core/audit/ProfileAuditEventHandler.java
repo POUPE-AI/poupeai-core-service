@@ -38,7 +38,6 @@ public class ProfileAuditEventHandler {
                     .build();
 
             auditLogRepository.save(auditLog);
-            log.info("Auditoria de perfil criada para ação: {}, profile_id: {}", event.actionType(), event.profileId());
         } catch (Exception e) {
             log.error("Falha ao criar log de auditoria para Profile {}: {}", event.actionType(), e.getMessage(), e);
         }
