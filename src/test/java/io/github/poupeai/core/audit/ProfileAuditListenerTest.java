@@ -112,7 +112,7 @@ class ProfileAuditListenerTest {
                 .email("old@example.com")
                 .firstName("OldFirst")
                 .lastName("OldLast")
-                .isDeactivated(false)
+                .deactivated(false)
                 .build();
 
         listener.postLoad(entity);
@@ -165,7 +165,6 @@ class ProfileAuditListenerTest {
 
         listener.postLoad(entity);
 
-
         listener.postUpdate(entity);
 
         verify(applicationContext, never()).publishEvent(any());
@@ -177,7 +176,7 @@ class ProfileAuditListenerTest {
                 .email("test@example.com")
                 .firstName("Test")
                 .lastName("User")
-                .isDeactivated(false)
+                .deactivated(false)
                 .build();
     }
 }
