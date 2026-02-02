@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
@@ -8,6 +9,7 @@ import io.github.poupeai.core.domain.port.business.CreditCardServicePort;
 import io.github.poupeai.core.domain.port.persistence.CreditCardRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.InstitutionRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CreditCardServiceAdapter implements CreditCardServicePort {
     private final CreditCardRepositoryPort creditCardRepositoryPort;
     private final InstitutionRepositoryPort institutionRepositoryPort;
@@ -24,14 +27,22 @@ public class CreditCardServiceAdapter implements CreditCardServicePort {
     @Transactional
     public CreditCard create(CreditCard creditCard) {
         validateCreditCard(creditCard);
-        return creditCardRepositoryPort.create(creditCard);
+        CreditCard saved = creditCardRepositoryPort.create(creditCard);
+
+        Log.event(log, "CREDIT_CARD_CREATED", "Cartão de crédito criado. ID: {}", saved.getId());
+
+        return saved;
     }
 
     @Override
     @Transactional
     public CreditCard update(CreditCard creditCard, UUID profileId) {
         validateCreditCard(creditCard);
-        return creditCardRepositoryPort.update(creditCard);
+        CreditCard updated = creditCardRepositoryPort.update(creditCard);
+
+        Log.event(log, "CREDIT_CARD_UPDATED", "Cartão de crédito atualizado. ID: {}", updated.getId());
+
+        return updated;
     }
 
     @Override
@@ -52,16 +63,20 @@ public class CreditCardServiceAdapter implements CreditCardServicePort {
             throw new ResourceNotFoundException("Cartão de crédito não encontrado.");
         }
         creditCardRepositoryPort.delete(id);
+
+        Log.event(log, "CREDIT_CARD_DELETED", "Cartão de crédito excluído. ID: {}", id);
     }
 
     private void validateCreditCard(CreditCard creditCard) {
         if (creditCard.getInstitution() != null && creditCard.getInstitution().getId() != null) {
             if (!institutionRepositoryPort.existsById(creditCard.getInstitution().getId())) {
+                log.warn("Validação falhou: Instituição financeira inexistente.");
                 throw new ResourceNotFoundException("Instituição financeira não encontrada.");
             }
         }
 
         if (creditCardRepositoryPort.isNameTaken(creditCard.getName(), creditCard.getProfileId(), creditCard.getId())) {
+            log.warn("Validação falhou: Nome de cartão duplicado '{}'", creditCard.getName());
             throw new ResourceAlreadyExistsException("Um cartão de crédito com este nome já existe para este perfil.");
         }
 

@@ -32,7 +32,7 @@ class RabbitMQPublisherTest {
     @DisplayName("Should publish message with correlation id from MDC")
     void shouldPublishWithCorrelationIdFromMdc() {
         ArgumentCaptor<MessagePostProcessor> postProcessorCaptor = ArgumentCaptor.forClass(MessagePostProcessor.class);
-        MDC.put("traceId", "trace-123");
+        MDC.put("trace.correlation_id", "trace-123");
         try {
             publisher.publish("test-exchange", "rk", "payload");
         } finally {

@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ForbiddenActionException;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
@@ -11,6 +12,7 @@ import io.github.poupeai.core.domain.port.persistence.BankAccountRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.InstitutionRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BankAccountServiceAdapter implements BankAccountServicePort {
     private final BankAccountRepositoryPort bankAccountRepositoryPort;
     private final InstitutionRepositoryPort institutionRepositoryPort;
@@ -39,7 +42,11 @@ public class BankAccountServiceAdapter implements BankAccountServicePort {
             bankAccountRepositoryPort.clearDefaultByProfileId(bankAccount.getProfileId());
         }
 
-        return bankAccountRepositoryPort.create(bankAccount);
+        BankAccount saved = bankAccountRepositoryPort.create(bankAccount);
+
+        Log.event(log, "BANK_ACCOUNT_CREATED", "Conta bancária criada. ID: {}", saved.getId());
+
+        return saved;
     }
 
     @Override
@@ -51,7 +58,11 @@ public class BankAccountServiceAdapter implements BankAccountServicePort {
             bankAccountRepositoryPort.clearDefaultByProfileId(profileId);
         }
 
-        return bankAccountRepositoryPort.update(bankAccount);
+        BankAccount updated = bankAccountRepositoryPort.update(bankAccount);
+
+        Log.event(log, "BANK_ACCOUNT_UPDATED", "Conta bancária atualizada. ID: {}", updated.getId());
+
+        return updated;
     }
 
     @Override
@@ -74,11 +85,14 @@ public class BankAccountServiceAdapter implements BankAccountServicePort {
         if (Boolean.TRUE.equals(bankAccount.getIsDefault())) {
             long accountCount = bankAccountRepositoryPort.countByProfileId(profileId);
             if (accountCount > 1) {
+                log.warn("Tentativa de excluir conta padrão com outras contas existentes. ID: {}", id);
                 throw new ForbiddenActionException("Não é possível excluir a conta bancária padrão. Defina outra conta como padrão antes de excluir esta.");
             }
         }
 
         bankAccountRepositoryPort.delete(id);
+
+        Log.event(log, "BANK_ACCOUNT_DELETED", "Conta bancária excluída. ID: {}", id);
     }
 
     @Override
@@ -101,11 +115,13 @@ public class BankAccountServiceAdapter implements BankAccountServicePort {
     private void validateBankAccount(BankAccount bankAccount) {
         if (bankAccount.getInstitution() != null && bankAccount.getInstitution().getId() != null) {
             if (!institutionRepositoryPort.existsById(bankAccount.getInstitution().getId())) {
+                log.warn("Validação falhou: Instituição financeira inexistente.");
                 throw new ResourceNotFoundException("Instituição financeira não encontrada.");
             }
         }
 
         if (bankAccountRepositoryPort.isNameTaken(bankAccount.getName(), bankAccount.getProfileId(), bankAccount.getId())) {
+            log.warn("Validação falhou: Nome de conta duplicado '{}'", bankAccount.getName());
             throw new ResourceAlreadyExistsException("Uma conta bancária com este nome já existe para este perfil.");
         }
 
