@@ -38,7 +38,7 @@ public class ProfileEntity {
     private String lastName;
 
     @Column(name = "is_deactivated")
-    private boolean isDeactivated;
+    private boolean deactivated;
 
     @Column(name = "deactivation_scheduled_at")
     private OffsetDateTime deactivationScheduledAt;

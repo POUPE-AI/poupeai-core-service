@@ -11,6 +11,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -25,8 +26,10 @@ public class ProfileAuditEventHandler {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleProfileAuditEvent(ProfileAuditEvent event) {
         try {
+            UUID profileIdForLog = "DELETE".equals(event.actionType()) ? null : event.profileId();
+
             AuditLogEntity auditLog = AuditLogEntity.builder()
-                    .profileId(event.profileId())
+                    .profileId(profileIdForLog)
                     .actionTime(OffsetDateTime.now())
                     .actionType(event.actionType())
                     .entityType(event.entityType())

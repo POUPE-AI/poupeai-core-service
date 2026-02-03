@@ -17,7 +17,7 @@ public class Profile {
     private String email;
     private String firstName;
     private String lastName;
-    private boolean isDeactivated;
+    private boolean deactivated;
     private OffsetDateTime deactivationScheduledAt;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
