@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.CreditCard;
@@ -134,8 +135,7 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
         }
 
         if (changed) {
-            log.info("Corrigindo datas da fatura {}: Fechamento {} -> {}, Vencimento {} -> {}",
-                    invoice.getId(), invoice.getClosingDate(), expectedClosingDate, invoice.getDueDate(), expectedDueDate);
+            Log.event(log, "INVOICE_DATES_CORRECTED", "Datas da fatura corrigidas. ID: {}", invoice.getId());
         }
     }
 
@@ -202,6 +202,8 @@ public class InvoiceServiceAdapter implements InvoiceServicePort {
         transactionRepositoryPort.deleteByInvoiceId(invoiceId);
         
         invoiceRepositoryPort.delete(invoiceId);
+
+        Log.event(log, "INVOICE_DELETED", "Fatura excluída. ID: {}", invoiceId);
     }
 
     @Override

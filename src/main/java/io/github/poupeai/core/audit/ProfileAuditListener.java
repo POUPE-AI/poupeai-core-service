@@ -37,10 +37,8 @@ public class ProfileAuditListener {
     public void postPersist(ProfileEntity entity) {
         try {
             publishAuditEvent(entity, "CREATE", null);
-            log.info("Evento de auditoria publicado para ação: CREATE, profile_id: {}", entity.getUserId());
         } catch (Exception e) {
             log.error("Falha ao publicar evento de auditoria para Profile CREATE: {}", e.getMessage(), e);
-            // Clean up any cached state for this entity to avoid stale data on failed CREATE operations
             if (entity != null && entity.getUserId() != null) {
                 OLD_VALUES_CACHE.remove(entity.getUserId());
             }
@@ -55,14 +53,10 @@ public class ProfileAuditListener {
                 Map<String, Object> changes = detectChanges(oldValues, newState);
 
                 if (changes.isEmpty()) {
-                    log.debug("Sem mudanças detectadas no perfil: {}", entity.getUserId());
                     return newState;
                 }
 
                 publishAuditEvent(entity, "UPDATE", changes);
-                log.info("Evento de auditoria publicado para ação: UPDATE, profile_id: {}, changes: {}",
-                        entity.getUserId(), changes.keySet());
-
                 return newState;
             });
         } catch (Exception e) {
@@ -74,8 +68,6 @@ public class ProfileAuditListener {
     public void postRemove(ProfileEntity entity) {
         try {
             publishAuditEvent(entity, "DELETE", null);
-            log.info("Evento de auditoria publicado para ação: DELETE, profile_id: {}", entity.getUserId());
-
             OLD_VALUES_CACHE.remove(entity.getUserId());
         } catch (Exception e) {
             log.error("Falha ao publicar evento de auditoria para Profile DELETE: {}", e.getMessage(), e);

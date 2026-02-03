@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.exception.DomainException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
@@ -16,6 +17,7 @@ import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.InvoicePaymentRepositoryPort;
 import io.github.poupeai.core.domain.port.persistence.TransactionRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InvoicePaymentServiceAdapter implements InvoicePaymentServicePort {
     private final InvoicePaymentRepositoryPort invoicePaymentRepositoryPort;
     private final InvoiceServicePort invoiceServicePort;
@@ -75,6 +78,8 @@ public class InvoicePaymentServiceAdapter implements InvoicePaymentServicePort {
 
         invoiceServicePort.addPaymentToInvoice(invoiceId, amount);
 
+        Log.event(log, "INVOICE_PAYMENT_CREATED", "Pagamento de fatura registrado. ID: {}, Valor: {}", savedPayment.getId(), amount);
+
         return savedPayment;
     }
 
@@ -101,6 +106,8 @@ public class InvoicePaymentServiceAdapter implements InvoicePaymentServicePort {
         transactionRepositoryPort.delete(payment.getPaymentTransactionId());
 
         invoiceServicePort.removePaymentFromInvoice(payment.getInvoiceId(), paymentAmount);
+
+        Log.event(log, "INVOICE_PAYMENT_DELETED", "Pagamento de fatura estornado. ID: {}", paymentId);
     }
 
     @Override
@@ -126,8 +133,9 @@ public class InvoicePaymentServiceAdapter implements InvoicePaymentServicePort {
         return categories.stream()
                 .filter(c -> c.getType() == CategoryType.EXPENSE)
                 .findFirst()
-                .orElseThrow(() -> new DomainException(
-                        "Nenhuma categoria de despesa encontrada. Crie uma categoria de despesa antes de pagar faturas."
-                ));
+                .orElseThrow(() -> {
+                    log.warn("Tentativa de pagamento de fatura sem categoria de despesa. Profile: {}", profileId);
+                    return new DomainException("Nenhuma categoria de despesa encontrada. Crie uma categoria de despesa antes de pagar faturas.");
+                });
     }
 }

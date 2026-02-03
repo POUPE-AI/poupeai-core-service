@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.model.DestinationType;
 import io.github.poupeai.core.domain.event.PoupeAiEvent;
 import io.github.poupeai.core.domain.exception.DomainException;
@@ -41,8 +42,6 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
                                            long size, UUID bankAccountId,
                                            UUID fallbackIncomeCategoryId,
                                            UUID fallbackExpenseCategoryId) {
-        log.info("Tentando criar job de ingestão: {}, bankAccount: {}", profileId, bankAccountId);
-
         if (size <= 0) {
             throw new DomainException("Arquivo inválido.");
         }
@@ -63,7 +62,7 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
             storagePort.upload(fileKey, fileContent, contentType, size,
                     Map.of("profileId", profileId.toString(), "type", "bank-statement"));
         } catch (Exception e) {
-            log.error("Erro ao enviar arquivo para o MinIO", e);
+            Log.error(log, "INGESTION_FILE_UPLOAD_FAIL", "Erro ao enviar arquivo para o MinIO", e);
             throw new RuntimeException("Falha ao enviar arquivo para o storage", e);
         }
 
@@ -105,6 +104,8 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
 
         messagePublisher.publish(event, "ingestion.job");
 
+        Log.event(log, "INGESTION_JOB_CREATED", "Job de ingestão criado. ID: {}", savedJob.getId());
+
         return savedJob;
     }
 
@@ -116,8 +117,6 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
     @Override
     @Transactional
     public void updateJobStatus(UUID jobId, JobStatus status, String summary, String errorDetails) {
-        log.info("Atualizando status do job {} para {}", jobId, status);
-
         IngestionJob job = ingestionJobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job de ingestão não encontrado: " + jobId));
 
@@ -132,5 +131,7 @@ public class IngestionJobServiceAdapter implements IngestionJobServicePort {
         }
 
         ingestionJobRepository.save(job);
+
+        Log.event(log, "INGESTION_JOB_UPDATED", "Status do job {} atualizado para {}", jobId, status);
     }
 }

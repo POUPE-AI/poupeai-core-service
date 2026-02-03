@@ -1,5 +1,6 @@
 package io.github.poupeai.core.business.adapter;
 
+import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.exception.ResourceAlreadyExistsException;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.Category;
@@ -10,6 +11,7 @@ import io.github.poupeai.core.domain.port.business.CategoryServicePort;
 import io.github.poupeai.core.domain.port.persistence.CategoryRepositoryPort;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CategoryServiceAdapter implements CategoryServicePort {
     private final CategoryRepositoryPort categoryRepositoryPort;
 
@@ -25,18 +28,28 @@ public class CategoryServiceAdapter implements CategoryServicePort {
     @Transactional
     public Category create(Category category) {
         if (categoryRepositoryPort.isNameTaken(category.getName(), category.getProfileId(), null)) {
+            log.warn("Tentativa de criar categoria duplicada: {}", category.getName());
             throw new ResourceAlreadyExistsException("Categoria com este nome já existe");
         }
-        return categoryRepositoryPort.create(category);
+        Category saved = categoryRepositoryPort.create(category);
+
+        Log.event(log, "CATEGORY_CREATED", "Categoria criada. ID: {}, Nome: {}", saved.getId(), saved.getName());
+
+        return saved;
     }
 
     @Override
     @Transactional
     public Category update(Category category, UUID profileId) {
         if (categoryRepositoryPort.isNameTaken(category.getName(), category.getProfileId(), category.getId())) {
+            log.warn("Tentativa de atualizar para nome de categoria duplicada: {}", category.getName());
             throw new ResourceAlreadyExistsException("Categoria com este nome já existe");
         }
-        return categoryRepositoryPort.update(category, profileId);
+        Category updated = categoryRepositoryPort.update(category, profileId);
+
+        Log.event(log, "CATEGORY_UPDATED", "Categoria atualizada. ID: {}", updated.getId());
+
+        return updated;
     }
 
     @Override
@@ -56,6 +69,8 @@ public class CategoryServiceAdapter implements CategoryServicePort {
             throw new ResourceNotFoundException("Categoria não encontrada.");
         }
         categoryRepositoryPort.delete(id);
+
+        Log.event(log, "CATEGORY_DELETED", "Categoria excluída. ID: {}", id);
     }
 
     @Override
