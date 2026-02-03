@@ -1,6 +1,5 @@
 package io.github.poupeai.core.business.adapter;
 
-import io.github.poupeai.core.audit.Log;
 import io.github.poupeai.core.domain.model.BalanceChartPoint;
 import io.github.poupeai.core.domain.model.BalanceSummary;
 import io.github.poupeai.core.domain.model.BankAccount;
@@ -37,7 +36,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -260,10 +258,6 @@ public class DashboardServiceAdapter implements DashboardServicePort {
                                 profileId, TransactionType.EXPENSE, startPreviousPeriod, endPreviousPeriod.plusDays(1));
 
                 if (previousPeriodExpenses.compareTo(BigDecimal.ZERO) == 0) {
-                        Log.event(log, "SAVINGS_CALCULATION_SKIPPED",
-                                "Análise de economia ignorada: faltam dados de despesa no período de {} a {}.",
-                                startPreviousPeriod, endPreviousPeriod);
-
                         return SavingsEstimate.builder()
                                         .estimatedSavings(BigDecimal.ZERO)
                                         .savingsPercentage(BigDecimal.ZERO)
