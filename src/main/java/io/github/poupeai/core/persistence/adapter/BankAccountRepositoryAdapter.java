@@ -3,6 +3,7 @@ package io.github.poupeai.core.persistence.adapter;
 import io.github.poupeai.core.domain.exception.ResourceNotFoundException;
 import io.github.poupeai.core.domain.model.BankAccount;
 import io.github.poupeai.core.domain.port.persistence.BankAccountRepositoryPort;
+import io.github.poupeai.core.persistence.entity.BankAccountEntity;
 import io.github.poupeai.core.persistence.mapper.BankAccountEntityMapper;
 import io.github.poupeai.core.persistence.repository.BankAccountRepository;
 import io.github.poupeai.core.persistence.repository.InstitutionRepository;
@@ -30,13 +31,9 @@ public class BankAccountRepositoryAdapter implements BankAccountRepositoryPort {
         var profile = profileRepository.getReferenceById(bankAccount.getProfileId());
         entity.setProfile(profile);
 
-        if (bankAccount.getInstitution() != null && bankAccount.getInstitution().getId() != null) {
-            var institution = institutionRepository.getReferenceById(bankAccount.getInstitution().getId());
-            entity.setInstitution(institution);
-        }
+        setRelationships(entity, bankAccount);
 
-        var savedEntity = bankAccountRepository.save(entity);
-        return bankAccountMapper.toDomain(savedEntity);
+        return bankAccountMapper.toDomain(bankAccountRepository.save(entity));
     }
 
     @Override
@@ -48,15 +45,9 @@ public class BankAccountRepositoryAdapter implements BankAccountRepositoryPort {
         existingEntity.setDescription(bankAccount.getDescription());
         existingEntity.setIsDefault(bankAccount.getIsDefault());
 
-        if (bankAccount.getInstitution() != null && bankAccount.getInstitution().getId() != null) {
-            var institution = institutionRepository.getReferenceById(bankAccount.getInstitution().getId());
-            existingEntity.setInstitution(institution);
-        } else {
-            existingEntity.setInstitution(null);
-        }
+        setRelationships(existingEntity, bankAccount);
 
-        var savedEntity = bankAccountRepository.save(existingEntity);
-        return bankAccountMapper.toDomain(savedEntity);
+        return bankAccountMapper.toDomain(bankAccountRepository.save(existingEntity));
     }
 
     @Override
@@ -104,5 +95,17 @@ public class BankAccountRepositoryAdapter implements BankAccountRepositoryPort {
     @Transactional
     public void clearDefaultByProfileId(UUID profileId) {
         bankAccountRepository.clearDefaultByProfileUserId(profileId);
+    }
+
+    private void setRelationships(BankAccountEntity entity, BankAccount domain) {
+        if (domain.getProfileId() != null) {
+            entity.setProfile(profileRepository.getReferenceById(domain.getProfileId()));
+        }
+
+        if (domain.getInstitution() != null && domain.getInstitution().getId() != null) {
+            entity.setInstitution(institutionRepository.getReferenceById(domain.getInstitution().getId()));
+        } else {
+            entity.setInstitution(null);
+        }
     }
 }
