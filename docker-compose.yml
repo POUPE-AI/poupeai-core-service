@@ -1,7 +1,7 @@
 services:
-  postgres:
+  core-db:
     image: postgres:16-alpine
-    container_name: poupeai-postgres
+    container_name: core-db-local
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -14,13 +14,14 @@ services:
     networks:
       - poupeai-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d poupeai_core"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d core_db" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
   postgres_data:
+
 
 networks:
   poupeai-network:
